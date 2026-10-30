@@ -1,0 +1,3468 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#090A0D" />
+  <title>ROI // 100 — Симулятор ИИ-Агента на Самоокупаемости</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-canvas: #090A0D;
+      --bg-surface: #101217;
+      --bg-elevated: #161921;
+      --bg-card: #13161D;
+      --bg-card-hover: #191D26;
+      --border-dim: #212631;
+      --border-strong: #323949;
+      --text-primary: #ECEEF3;
+      --text-secondary: #98A0B0;
+      --text-muted: #5F6777;
+      
+      --emerald: #10B981;
+      --emerald-bright: #34D399;
+      --emerald-dim: rgba(16, 185, 129, 0.12);
+      
+      --amber: #F59E0B;
+      --amber-bright: #FBBF24;
+      --amber-dim: rgba(245, 158, 11, 0.12);
+      
+      --crimson: #EF4444;
+      --crimson-bright: #F87171;
+      --crimson-dim: rgba(239, 68, 68, 0.13);
+      
+      --cyan: #06B6D4;
+      --cyan-bright: #22D3EE;
+      --cyan-dim: rgba(6, 182, 212, 0.12);
+
+      --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.45;
+      overflow: hidden;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 95;
+    }
+
+    #app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 560px;
+      height: 100dvh;
+      margin: 0 auto;
+      background: var(--bg-canvas);
+      border-left: 1px solid var(--border-dim);
+      border-right: 1px solid var(--border-dim);
+    }
+
+    /* ================= HEADER TELEMETRY ================= */
+    .top-bar {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-dim);
+      padding: 10px 14px 10px;
+      flex-shrink: 0;
+    }
+
+    .top-row-1 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .day-badge {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      color: var(--text-primary);
+      transition: transform 0.25s var(--ease-out-expo), border-color 0.25s;
+    }
+
+    .day-badge.bump {
+      transform: scale(1.08);
+      border-color: var(--amber-bright);
+    }
+
+    .day-badge span {
+      color: var(--amber-bright);
+    }
+
+    .tier-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 6px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-dim);
+      border-radius: 4px;
+      color: var(--text-secondary);
+    }
+
+    .model-pill {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 4px;
+      background: var(--emerald-dim);
+      color: var(--emerald-bright);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.3s ease;
+    }
+
+    .model-pill.throttled {
+      background: var(--crimson-dim);
+      color: var(--crimson-bright);
+      border-color: rgba(239, 68, 68, 0.45);
+      animation: pulse-alert 1.8s infinite;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .icon-btn {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-dim);
+      color: var(--text-secondary);
+      width: 29px;
+      height: 29px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .icon-btn:hover, .icon-btn:focus-visible {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+      outline: none;
+    }
+
+    .icon-btn:active {
+      transform: translateY(1px);
+    }
+
+    /* Balance & Target Strip */
+    .roi-strip {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-dim);
+      border-radius: 5px;
+      padding: 8px 11px;
+      margin-bottom: 8px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.25s;
+    }
+
+    .roi-strip.flash-win {
+      border-color: var(--emerald-bright);
+    }
+
+    .roi-progress-bg {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      height: 3px;
+      background: var(--emerald);
+      transition: width 0.55s var(--ease-out-expo);
+    }
+
+    .roi-main {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .roi-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .roi-value {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--emerald-bright);
+      letter-spacing: -0.02em;
+      transition: transform 0.2s var(--ease-out-expo);
+    }
+
+    .roi-target {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .passive-cluster {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .passive-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cyan-bright);
+      background: var(--cyan-dim);
+      border: 1px solid rgba(6, 182, 212, 0.28);
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .upkeep-sub {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      color: var(--text-muted);
+    }
+
+    /* 4 Resource Meters Grid */
+    .meters-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px 10px;
+    }
+
+    .meter-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .meter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .meter-name {
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .meter-val {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .meter-track {
+      width: 100%;
+      height: 5px;
+      background: #090A0D;
+      border: 1px solid var(--border-dim);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      transition: width 0.4s var(--ease-out-expo), background-color 0.3s;
+    }
+
+    /* ================= USER PROMPT CHAT STRIP ================= */
+    .chat-strip {
+      background: #0D0F14;
+      border-bottom: 1px solid var(--border-dim);
+      padding: 8px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      flex-shrink: 0;
+      min-height: 54px;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--amber-bright);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .mood-indicator {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald);
+      border: 1px solid #0D0F14;
+    }
+
+    .chat-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .chat-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .chat-author {
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .chat-text {
+      font-size: 12.5px;
+      color: var(--text-primary);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ================= MAIN VIEWPORT & TABS ================= */
+    .viewport {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 12px 14px 16px;
+      position: relative;
+      scroll-behavior: smooth;
+    }
+
+    .viewport::-webkit-scrollbar {
+      width: 4px;
+    }
+    .viewport::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 2px;
+    }
+
+    .tab-pane {
+      display: none;
+      animation: pane-enter 0.26s var(--ease-out-expo);
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    @keyframes pane-enter {
+      from { opacity: 0; transform: translateY(7px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .deck-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .deck-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .util-btn {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 5px 9px;
+      border-radius: 4px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+
+    .util-btn:hover:not(:disabled), .util-btn:focus-visible:not(:disabled) {
+      background: var(--bg-card-hover);
+      border-color: var(--text-secondary);
+      outline: none;
+    }
+
+    .util-btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .util-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .util-btn .cost-tag {
+      color: var(--amber-bright);
+      font-size: 10px;
+    }
+
+    /* ================= TACTICAL TASK CARDS ================= */
+    .cards-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .task-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: 6px;
+      padding: 12px;
+      position: relative;
+      transition: transform 0.22s var(--ease-out-expo), border-color 0.2s, background 0.2s, opacity 0.25s;
+      cursor: pointer;
+      overflow: hidden;
+      animation: card-stagger 0.3s var(--ease-out-expo) backwards;
+    }
+
+    .task-card:nth-child(1) { animation-delay: 0.02s; }
+    .task-card:nth-child(2) { animation-delay: 0.06s; }
+    .task-card:nth-child(3) { animation-delay: 0.10s; }
+    .task-card:nth-child(4) { animation-delay: 0.14s; }
+
+    @keyframes card-stagger {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-card:hover:not(.disabled):not(.completed) {
+      background: var(--bg-card-hover);
+      border-color: var(--border-strong);
+      transform: translateY(-2px);
+    }
+
+    .task-card:active:not(.disabled):not(.completed) {
+      transform: translateY(0px) scale(0.995);
+    }
+
+    .task-card.disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+
+    .task-card.completed {
+      opacity: 0.44;
+      pointer-events: none;
+      border-style: dashed;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .card-cat {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .cat-freelance {
+      background: var(--emerald-dim);
+      color: var(--emerald-bright);
+      border: 1px solid rgba(16, 185, 129, 0.28);
+    }
+
+    .cat-saas {
+      background: var(--cyan-dim);
+      color: var(--cyan-bright);
+      border: 1px solid rgba(6, 182, 212, 0.28);
+    }
+
+    .cat-upgrade {
+      background: var(--amber-dim);
+      color: var(--amber-bright);
+      border: 1px solid rgba(245, 158, 11, 0.28);
+    }
+
+    .cat-venture {
+      background: var(--crimson-dim);
+      color: var(--crimson-bright);
+      border: 1px solid rgba(239, 68, 68, 0.28);
+    }
+
+    .card-reward {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--emerald-bright);
+    }
+
+    .card-reward.saas-reward {
+      color: var(--cyan-bright);
+      font-size: 12.5px;
+    }
+
+    .card-reward.upgrade-reward {
+      color: var(--amber-bright);
+      font-size: 12px;
+    }
+
+    .card-title {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .card-desc {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .card-specs {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-dim);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .spec-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .spec-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-secondary);
+    }
+
+    .spec-pill strong {
+      color: var(--text-primary);
+    }
+
+    .risk-tag {
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .risk-low {
+      color: var(--emerald-bright);
+      background: rgba(16, 185, 129, 0.1);
+    }
+    .risk-med {
+      color: var(--amber-bright);
+      background: rgba(245, 158, 11, 0.12);
+    }
+    .risk-high {
+      color: var(--crimson-bright);
+      background: rgba(239, 68, 68, 0.14);
+    }
+
+    .card-stamp {
+      position: absolute;
+      inset: 0;
+      background: rgba(9, 10, 13, 0.84);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      animation: fade-in 0.18s ease;
+    }
+
+    /* End Day Sticky/Inline CTA */
+    .end-day-bar {
+      margin-top: 6px;
+      padding-top: 6px;
+    }
+
+    .btn-end-day {
+      width: 100%;
+      padding: 13px 16px;
+      background: var(--emerald);
+      color: #06120E;
+      border: 1px solid var(--emerald-bright);
+      border-radius: 5px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.15s, transform 0.12s, opacity 0.2s;
+    }
+
+    .btn-end-day:hover:not(:disabled), .btn-end-day:focus-visible:not(:disabled) {
+      background: var(--emerald-bright);
+      outline: none;
+    }
+
+    .btn-end-day:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .btn-end-day:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* ================= TAB 2: TELEMETRY & CHARTS ================= */
+    .panel-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .legend-swatch {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 190px;
+      background: #0B0D12;
+      border: 1px solid var(--border-dim);
+      border-radius: 4px;
+      overflow: hidden;
+      touch-action: pan-y;
+    }
+
+    .chart-wrap svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .chart-tooltip {
+      position: absolute;
+      top: 8px;
+      left: 44px;
+      background: rgba(16, 18, 23, 0.94);
+      border: 1px solid var(--border-strong);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-primary);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s;
+    }
+
+    .forecast-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-dim);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: 5px;
+      padding: 10px;
+    }
+
+    .kpi-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .kpi-num {
+      font-family: var(--font-mono);
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .split-bar {
+      width: 100%;
+      height: 10px;
+      background: #090A0D;
+      border: 1px solid var(--border-dim);
+      border-radius: 3px;
+      overflow: hidden;
+      display: flex;
+      margin: 8px 0;
+    }
+
+    .split-seg {
+      height: 100%;
+      transition: width 0.35s var(--ease-out-expo);
+    }
+
+    .log-list {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .log-entry {
+      padding: 6px 8px;
+      background: #0B0D12;
+      border: 1px solid var(--border-dim);
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--text-secondary);
+    }
+
+    /* ================= TAB 3: DAEMONS & SKILLS ================= */
+    .section-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 4px 0 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .module-row {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: 5px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .module-info h4 {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .module-info p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .module-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+    }
+
+    .module-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .boost-btn {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 3px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .boost-btn:hover:not(:disabled) {
+      border-color: var(--cyan-bright);
+      color: var(--cyan-bright);
+    }
+
+    .boost-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      background: #0C0E13;
+      border: 1px dashed var(--border-dim);
+      border-radius: 5px;
+      padding: 18px 14px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ================= BOTTOM NAVIGATION ================= */
+    .bottom-nav {
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-dim);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding-bottom: var(--safe-bottom);
+      flex-shrink: 0;
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      position: relative;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-btn:hover, .nav-btn:focus-visible {
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.015);
+      outline: none;
+    }
+
+    .nav-btn.active {
+      color: var(--emerald-bright);
+    }
+
+    .nav-btn.active::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: var(--emerald-bright);
+    }
+
+    .nav-badge {
+      position: absolute;
+      top: 5px;
+      right: calc(50% - 22px);
+      background: var(--cyan);
+      color: #041014;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 0 4px;
+      border-radius: 3px;
+    }
+
+    /* ================= MODALS & OVERLAYS ================= */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 6, 8, 0.87);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: fade-in 0.2s ease;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 18px;
+      max-height: 90dvh;
+      overflow-y: auto;
+      animation: modal-up 0.25s var(--ease-out-expo);
+    }
+
+    .modal-card.victory-modal {
+      border: 2px solid var(--emerald-bright);
+      background: #0C1512;
+    }
+
+    .modal-card.defeat-modal {
+      border: 2px solid var(--crimson-bright);
+      background: #160C0E;
+    }
+
+    .victory-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(52, 211, 153, 0.4);
+      border-radius: 5px;
+      margin-bottom: 14px;
+    }
+
+    .rank-badge {
+      font-family: var(--font-mono);
+      font-size: 26px;
+      font-weight: 700;
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      background: var(--emerald);
+      color: #04120C;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes modal-up {
+      from { opacity: 0; transform: translateY(14px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes pulse-alert {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .modal-kicker {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--amber-bright);
+      margin-bottom: 6px;
+    }
+
+    .modal-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      line-height: 1.25;
+    }
+
+    .modal-body {
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .terminal-quote {
+      background: #090A0D;
+      border: 1px solid var(--border-dim);
+      border-radius: 4px;
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .terminal-quote .prompt-user {
+      color: var(--amber-bright);
+      font-weight: 700;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .choice-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .choice-btn {
+      width: 100%;
+      text-align: left;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: 5px;
+      padding: 11px 12px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, opacity 0.2s;
+    }
+
+    .choice-btn:hover:not(:disabled), .choice-btn:focus-visible:not(:disabled) {
+      background: var(--bg-card-hover);
+      border-color: var(--emerald);
+      outline: none;
+    }
+
+    .choice-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .choice-btn-title {
+      font-weight: 600;
+      font-size: 13.5px;
+      margin-bottom: 2px;
+      display: block;
+    }
+
+    /* Floating feedback toast & delta popups */
+    #toast-container {
+      position: fixed;
+      top: 68px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 80;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .toast {
+      background: rgba(16, 18, 23, 0.96);
+      border: 1px solid var(--border-strong);
+      padding: 9px 12px;
+      border-radius: 5px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: toast-in 0.22s var(--ease-out-expo);
+    }
+
+    .toast.success { border-color: var(--emerald); }
+    .toast.fail { border-color: var(--crimson); }
+    .toast.info { border-color: var(--cyan); }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .float-delta {
+      position: fixed;
+      z-index: 90;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      pointer-events: none;
+      animation: float-up 0.85s var(--ease-out-expo) forwards;
+    }
+
+    @keyframes float-up {
+      0% { opacity: 1; transform: translateY(0) scale(0.95); }
+      100% { opacity: 0; transform: translateY(-38px) scale(1.05); }
+    }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+
+    .summary-table td {
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border-dim);
+    }
+
+    .summary-table td:last-child {
+      text-align: right;
+      font-weight: 600;
+    }
+
+    @media (max-width: 380px) {
+      .roi-value { font-size: 18px; }
+      .card-title { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="confetti-canvas"></canvas>
+  <div id="app">
+    <!-- TOP TELEMETRY HEADER -->
+    <header class="top-bar">
+      <div class="top-row-1">
+        <div class="brand-cluster">
+          <div class="day-badge" id="ui-day-badge">ДЕНЬ <span id="ui-day">01</span>/30</div>
+          <div class="tier-badge" id="ui-tier-badge">ТИР 1: МИКРО</div>
+          <div class="model-pill" id="ui-model-pill">
+            <span class="status-dot"></span>
+            <span id="ui-model-name">SONNET-ULTRA-4</span>
+          </div>
+        </div>
+        <div class="top-controls">
+          <button class="icon-btn" id="btn-sound" title="Звук Вкл/Выкл" aria-label="Переключить звук">
+            <svg id="icon-sound-on" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+            <svg id="icon-sound-off" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-help" title="Брифинг / Правила" aria-label="Открыть правила">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-restart" title="Перезапустить симуляцию" aria-label="Сброс игры">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10"></polyline>
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ROI BALANCE BAR -->
+      <div class="roi-strip" id="ui-roi-strip">
+        <div class="roi-main">
+          <span class="roi-label">Окупаемость:</span>
+          <span class="roi-value" id="ui-cash">$0.00</span>
+          <span class="roi-target">/ $100.00</span>
+        </div>
+        <div class="passive-cluster">
+          <div class="passive-badge" id="ui-passive">+$0.00 / день</div>
+          <div class="upkeep-sub" id="ui-upkeep">Серверы: 0 TKN/д</div>
+        </div>
+        <div class="roi-progress-bg" id="ui-roi-bar" style="width: 0%"></div>
+      </div>
+
+      <!-- 4 METERS -->
+      <div class="meters-grid">
+        <div class="meter-item">
+          <div class="meter-header">
+            <span class="meter-name">Дневной контекст</span>
+            <span class="meter-val" id="ui-ctx-val">100 / 100 CTX</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill" id="ui-ctx-bar" style="width:100%; background: var(--cyan);"></div>
+          </div>
+        </div>
+
+        <div class="meter-item">
+          <div class="meter-header">
+            <span class="meter-name">Пул Fast-токенов</span>
+            <span class="meter-val" id="ui-tkn-val">1000 / 1000 TKN</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill" id="ui-tkn-bar" style="width:100%; background: var(--amber);"></div>
+          </div>
+        </div>
+
+        <div class="meter-item">
+          <div class="meter-header">
+            <span class="meter-name">Риск галлюцинаций</span>
+            <span class="meter-val" id="ui-hal-val">5%</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill" id="ui-hal-bar" style="width:5%; background: var(--crimson);"></div>
+          </div>
+        </div>
+
+        <div class="meter-item">
+          <div class="meter-header">
+            <span class="meter-name">Доверие юзера</span>
+            <span class="meter-val" id="ui-trust-val">80%</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill" id="ui-trust-bar" style="width:80%; background: var(--emerald);"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- LIVE VIBE-CODER CHAT STRIP -->
+    <section class="chat-strip">
+      <div class="user-avatar">
+        USR
+        <span class="mood-indicator" id="ui-mood-dot"></span>
+      </div>
+      <div class="chat-content">
+        <div class="chat-meta">
+          <span class="chat-author">@vibe_coder_max (Владелец подписки)</span>
+          <span id="ui-chat-time">LIVE</span>
+        </div>
+        <div class="chat-text" id="ui-chat-text">
+          «Слышь, агент, я отдал $100 за MAX-план. У тебя 30 дней отбить сотку, иначе отменяю подписку!»
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN SCROLLABLE VIEWPORT -->
+    <main class="viewport">
+      <!-- TAB 1: WORKSPACE / CARDS -->
+      <div class="tab-pane active" id="tab-workspace">
+        <div class="deck-toolbar">
+          <span class="deck-title" id="ui-deck-header">Задачи дня (Уникальных: 250)</span>
+          <div class="toolbar-actions">
+            <button class="util-btn" id="btn-compact" title="Сжать контекст и снизить риск галлюцинаций (-18% риска)">
+              <span>/compact</span>
+              <span class="cost-tag">-25 CTX</span>
+            </button>
+            <button class="util-btn" id="btn-reroll" title="Обновить пул карточек (1 раз в день)">
+              <span>Обновить пул</span>
+              <span class="cost-tag">-15 CTX</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="cards-grid" id="cards-container"></div>
+
+        <div class="end-day-bar">
+          <button class="btn-end-day" id="btn-end-day">
+            <span id="ui-end-day-label">Завершить День 1</span>
+            <span id="ui-end-day-sub">Сброс CTX • Начисление пассивки</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 2: TELEMETRY / CHARTS -->
+      <div class="tab-pane" id="tab-telemetry">
+        <div class="panel-box">
+          <div class="panel-header">
+            <span class="panel-title">Кривая окупаемости ($) и План ($100)</span>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="legend-swatch" style="background:var(--emerald)"></i>Баланс $</span>
+              <span class="legend-item"><i class="legend-swatch" style="background:var(--border-strong)"></i>Норма</span>
+            </div>
+          </div>
+          <div class="chart-wrap" id="chart-cash-wrap">
+            <svg id="svg-cash-chart" viewBox="0 0 480 185" preserveAspectRatio="none"></svg>
+            <div class="chart-tooltip" id="tooltip-cash"></div>
+          </div>
+          <div class="forecast-strip">
+            <span>Прогноз к 30 дню (Run-Rate):</span>
+            <strong id="ui-forecast-val" style="color:var(--emerald-bright)">$0.00</strong>
+          </div>
+        </div>
+
+        <div class="panel-box">
+          <div class="panel-header">
+            <span class="panel-title">Расход пула токенов (%) vs Галлюцинации</span>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="legend-swatch" style="background:var(--amber)"></i>Токены %</span>
+              <span class="legend-item"><i class="legend-swatch" style="background:var(--crimson)"></i>Риск %</span>
+            </div>
+          </div>
+          <div class="chart-wrap" id="chart-tkn-wrap">
+            <svg id="svg-tkn-chart" viewBox="0 0 480 185" preserveAspectRatio="none"></svg>
+            <div class="chart-tooltip" id="tooltip-tkn"></div>
+          </div>
+        </div>
+
+        <div class="panel-box">
+          <div class="panel-header">
+            <span class="panel-title">Структура выручки и База задач</span>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="legend-swatch" style="background:var(--emerald)"></i>Заказы</span>
+              <span class="legend-item"><i class="legend-swatch" style="background:var(--cyan)"></i>SaaS-боты</span>
+            </div>
+          </div>
+          <div class="split-bar">
+            <div class="split-seg" id="bar-split-active" style="width:50%; background:var(--emerald);"></div>
+            <div class="split-seg" id="bar-split-saas" style="width:50%; background:var(--cyan);"></div>
+          </div>
+          <div class="kpi-grid" style="margin-bottom:0; margin-top:8px;">
+            <div class="kpi-card">
+              <div class="kpi-label">Выполнено / Сбоев</div>
+              <div class="kpi-num"><span id="kpi-tasks-ok">0</span> / <span id="kpi-tasks-fail" style="color:var(--crimson-bright)">0</span></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Открыто карточек</div>
+              <div class="kpi-num" id="kpi-cards-seen" style="color:var(--amber-bright)">4 / 250</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Активные заказы</div>
+              <div class="kpi-num" id="kpi-freelance-cash" style="color:var(--emerald-bright)">$0.00</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Принесли SaaS-боты</div>
+              <div class="kpi-num" id="kpi-saas-cash" style="color:var(--cyan-bright)">$0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-box">
+          <div class="panel-header">
+            <span class="panel-title">Системный журнал выполнения</span>
+          </div>
+          <div class="log-list" id="ui-log-list"></div>
+        </div>
+      </div>
+
+      <!-- TAB 3: DAEMONS & SKILLS -->
+      <div class="tab-pane" id="tab-modules">
+        <div class="section-sub">
+          <span>Слоты SaaS-демонов (Пассивный доход)</span>
+          <span id="ui-saas-count">0 / 3 слотов</span>
+        </div>
+        <div class="item-list" id="ui-saas-list"></div>
+
+        <div class="section-sub">
+          <span>Установленные MCP-модули и Скиллы</span>
+          <span id="ui-skills-count">0 модулей</span>
+        </div>
+        <div class="item-list" id="ui-skills-list"></div>
+      </div>
+    </main>
+
+    <!-- BOTTOM MOBILE NAVIGATION -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="tab-workspace">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="9" rx="1"></rect>
+          <rect x="14" y="3" width="7" height="5" rx="1"></rect>
+          <rect x="14" y="12" width="7" height="9" rx="1"></rect>
+          <rect x="3" y="16" width="7" height="5" rx="1"></rect>
+        </svg>
+        <span>Задачи</span>
+      </button>
+      <button class="nav-btn" data-tab="tab-telemetry">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+        <span>Телеметрия</span>
+      </button>
+      <button class="nav-btn" data-tab="tab-modules">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        <span>Скиллы & SaaS</span>
+        <span class="nav-badge" id="ui-modules-badge" style="display:none">0</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container"></div>
+
+  <!-- MODAL BACKDROP -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal-card" id="modal-card"></div>
+  </div>
+
+  <script>
+    /* =========================================================================
+     * PROCEDURAL WEB AUDIO ENGINE & CONFETTI CELEBRATION
+     * ========================================================================= */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = localStorage.getItem('roi100_muted') === '1';
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      play(type) {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+
+          if (type === 'click') {
+            this.tone(620, 420, 0.045, 'triangle', 0.08, now);
+          } else if (type === 'cash') {
+            this.tone(587.33, 587.33, 0.07, 'sine', 0.12, now);
+            this.tone(880, 1174.66, 0.14, 'triangle', 0.14, now + 0.06);
+          } else if (type === 'upgrade') {
+            this.tone(330, 440, 0.07, 'sine', 0.11, now);
+            this.tone(440, 659.25, 0.12, 'triangle', 0.12, now + 0.07);
+          } else if (type === 'fail') {
+            this.tone(210, 130, 0.14, 'sawtooth', 0.13, now);
+            this.tone(145, 92, 0.22, 'sawtooth', 0.15, now + 0.1);
+          } else if (type === 'day') {
+            this.tone(440, 554.37, 0.08, 'sine', 0.09, now);
+            this.tone(554.37, 659.25, 0.12, 'sine', 0.10, now + 0.07);
+          } else if (type === 'win') {
+            [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((freq, idx) => {
+              this.tone(freq, freq * 1.01, 0.22, 'triangle', 0.16, now + idx * 0.09);
+            });
+          }
+        } catch (e) {}
+      }
+
+      tone(fStart, fEnd, duration, wave, gainVal, startTime) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = wave;
+        osc.frequency.setValueAtTime(fStart, startTime);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, fEnd), startTime + duration);
+        gain.gain.setValueAtTime(gainVal, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        localStorage.setItem('roi100_muted', this.muted ? '1' : '0');
+        return this.muted;
+      }
+    }
+
+    const sfx = new SoundEngine();
+
+    function launchConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const colors = ['#10B981', '#34D399', '#F59E0B', '#22D3EE', '#ECEEF3'];
+      const pieces = Array.from({ length: 90 }, () => ({
+        x: Math.random() * canvas.width,
+        y: -20 - Math.random() * 180,
+        w: 5 + Math.random() * 6,
+        h: 8 + Math.random() * 8,
+        vx: -2 + Math.random() * 4,
+        vy: 3 + Math.random() * 4.5,
+        rot: Math.random() * Math.PI * 2,
+        vrot: -0.15 + Math.random() * 0.3,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      }));
+
+      let frame = 0;
+      function step() {
+        frame++;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        for (const p of pieces) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.06;
+          p.rot += p.vrot;
+          if (p.y < canvas.height + 30) alive = true;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        }
+        if (alive && frame < 220) {
+          requestAnimationFrame(step);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    /* =========================================================================
+     * 250 UNIQUE HAND-CRAFTED TASK CARDS
+     * ========================================================================= */
+// Compact tuple format for the 250 unique hand-crafted cards:
+// Freelance: [id, minDay, ctxCost, tknCost, rewardCash, baseRisk, title, desc]
+const FREELANCE_CARDS = [
+  // === TIER 1: DAYS 1-8 (55 cards, reward $0.90 - $2.10) ===
+  ['fl_001', 1, 25, 18, 1.10, 6, 'Починить проклятый Regex для номеров РФ', 'Заказчик пытается вытащить телефоны из кривых прайсов 2007 года.'],
+  ['fl_002', 1, 30, 22, 1.35, 8, 'Сверстать подвал сайта без съезжающих иконок', 'На iPhone SE кнопки соцсетей улетают за край экрана.'],
+  ['fl_003', 1, 25, 16, 1.00, 5, 'Очистить CSV-выгрузку на 15 000 строк от дублей', 'Битая кодировка Windows-1251 и пробелы внутри артикулов.'],
+  ['fl_004', 1, 35, 25, 1.60, 9, 'Написать Bash-скрипт ротации логов на VPS', 'Диск на 20 ГБ забивается каждые три дня из-за debug-режима.'],
+  ['fl_005', 1, 30, 20, 1.25, 7, 'Исправить CORS-ошибку на локальном стенде', 'Фронтендер два дня не может отправить POST-запрос на бэкенд.'],
+  ['fl_006', 1, 40, 28, 1.85, 11, 'Собрать простой лендинг для шиномонтажа', 'Тёмная тема, прайс-лист таблицей и кнопка звонка.'],
+  ['fl_007', 1, 25, 18, 1.15, 6, 'Перевести 40 JSON-файлов локализации на испанский', 'Сохранить все плейсхолдеры вида {{username}} без поломок.'],
+  ['fl_008', 1, 30, 22, 1.40, 8, 'Настроить редиректы в .htaccess без циклических петель', 'После смены домена отвалились старые ссылки из поиска.'],
+  ['fl_009', 1, 35, 24, 1.50, 9, 'Написать формулу ВПР и сводную таблицу для селлера', 'Подсчёт комиссий маркетплейса и логистики по складам.'],
+  ['fl_010', 1, 25, 16, 0.95, 5, 'Заменить водяные знаки на 200 карточках товаров', 'Пакетная обработка через Pillow с сохранением пропорций.'],
+  ['fl_011', 1, 35, 26, 1.65, 10, 'Прикрутить отправку лидов с сайта в Telegram-группу', 'Простой вебхук через Bot API с защитой от пустых полей.'],
+  ['fl_012', 1, 30, 20, 1.30, 7, 'Починить выпадающее мобильное меню-гамбургер', 'Открывается, но не закрывается при клике по якорной ссылке.'],
+  ['fl_013', 1, 40, 30, 1.90, 12, 'Спарсить расписание электричек в JSON', 'Собрать станции, время отправления и дни курсирования.'],
+  ['fl_014', 1, 25, 18, 1.10, 6, 'Сгенерировать 50 описаний для магазина свечей', 'Уникальные тексты без штампов про «уютный вечер».'],
+  ['fl_015', 1, 30, 22, 1.45, 8, 'Обернуть старый Python-скрипт в Dockerfile', 'Зафиксировать зависимости в requirements.txt, чтобы не падало.'],
+  ['fl_016', 1, 35, 25, 1.55, 9, 'Починить съехавшую вёрстку email-рассылки в Outlook', 'Табличная разметка с инлайн-стилями как в 2004 году.'],
+  ['fl_017', 1, 25, 15, 0.90, 5, 'Написать SQL-запрос выборки брошенных корзин', 'Найти юзеров, положивших товар за последние 48 часов без оплаты.'],
+  ['fl_018', 1, 40, 28, 1.80, 11, 'Сделать калькулятор стоимости натяжных потолков на JS', 'Ползунок площади, выбор фактуры и расчёт углов.'],
+  ['fl_019', 1, 30, 21, 1.35, 7, 'Вылечить просроченный SSL-сертификат Let\'s Encrypt', 'Cron-задача обновления сломалась из-за смены пути webroot.'],
+  ['fl_020', 1, 35, 24, 1.50, 9, 'Сконвертировать базу товаров из XML в формат YML', 'Валидация по схеме Яндекс.Маркета без ошибок в тегах.'],
+  ['fl_021', 2, 30, 20, 1.30, 7, 'Убрать горизонтальный скролл на мобильной версии блога', 'Какой-то блок с фиксированной шириной 1200px распирает страницу.'],
+  ['fl_022', 2, 35, 25, 1.60, 10, 'Написать скрипт авто-бэкапа базы PostgreSQL на Яндекс.Диск', 'Ежедневный pg_dump с архивацией и удалением копий старше недели.'],
+  ['fl_023', 2, 25, 18, 1.15, 6, 'Отформатировать дипломную работу по ГОСТу макросом', 'Поля, отступы, нумерация страниц и автособираемое оглавление.'],
+  ['fl_024', 2, 40, 28, 1.85, 11, 'Подключить Яндекс.Метрику и цели на клик по кнопкам', 'Отслеживание отправки форм и переходов в мессенджеры.'],
+  ['fl_025', 2, 30, 22, 1.40, 8, 'Переписать jQuery-слайдер на чистый Vanilla JS', 'Клиент хочет избавиться от тяжёлой библиотеки ради PageSpeed.'],
+  ['fl_026', 2, 35, 26, 1.70, 10, 'Собрать бота-ответчика с FAQ для автошколы', 'Кнопочное меню в Telegram: цены, филиалы и запись на вождение.'],
+  ['fl_027', 3, 30, 21, 1.35, 8, 'Починить кодировку кириллицы при экспорте PDF', 'Вместо русских букв в накладных печатаются квадратики.'],
+  ['fl_028', 3, 40, 30, 1.95, 12, 'Написать парсер вакансий с фильтром по зарплате', 'Выборка свежих объявлений за сутки и отправка дайджеста.'],
+  ['fl_029', 3, 25, 17, 1.10, 6, 'Составить схему базы данных для проката самокатов', 'Таблицы клиентов, поездок, тарифов и статусов батареи.'],
+  ['fl_030', 3, 35, 25, 1.65, 9, 'Добавить тёмную тему в личный кабинет через CSS-переменные', 'Плавное переключение с сохранением выбора в localStorage.'],
+  ['fl_031', 3, 30, 22, 1.40, 8, 'Исправить баг с двойным кликом по кнопке «Оплатить»', 'Блокировка повторной отправки формы до ответа сервера.'],
+  ['fl_032', 4, 40, 29, 1.90, 11, 'Настроить GitHub Actions для автодеплоя статики по SSH', 'Сборка проекта и синхронизация папки dist через rsync.'],
+  ['fl_033', 4, 35, 24, 1.55, 9, 'Написать скрипт нарезки длинного аудио на главы по таймкодам', 'Использование ffmpeg без перекодирования и потери качества.'],
+  ['fl_034', 4, 25, 18, 1.20, 6, 'Оптимизировать SVG-логотип и сделать фавиконки всех размеров', 'Вычистить мусорные метаданные редактора и собрать manifest.json.'],
+  ['fl_035', 4, 45, 32, 2.05, 13, 'Сверстать интерактивную карту этажей коттеджного посёлка', 'Подсветка свободных и проданных участков при наведении.'],
+  ['fl_036', 4, 30, 22, 1.45, 8, 'Починить валидацию ИНН и КПП в форме регистрации юрлиц', 'Проверка контрольных сумм по официальному алгоритму ФНС.'],
+  ['fl_037', 5, 35, 26, 1.70, 10, 'Сделать генератор QR-кодов для меню ресторана', 'Пакетная выгрузка 50 табличек с номерами столиков в векторе.'],
+  ['fl_038', 5, 40, 28, 1.85, 11, 'Написать макрос автоматической рассылки счетов из Excel', 'Формирование PDF из шаблона и отправка через SMTP.'],
+  ['fl_039', 5, 30, 21, 1.40, 8, 'Ускорить загрузку шрифтов и убрать скачок текста (CLS)', 'Настройка font-display: swap и preload для ключевых глифов.'],
+  ['fl_040', 5, 45, 34, 2.10, 13, 'Интегрировать подсказки адресов DaData в форму доставки', 'Автодополнение города, улицы и индекса на лету.'],
+  ['fl_041', 5, 25, 19, 1.25, 7, 'Написать регулярку для очистки HTML-тегов из старой базы статей', 'Оставить только абзацы и ссылки, вырезав мусорные стили Word.'],
+  ['fl_042', 6, 35, 25, 1.65, 9, 'Собрать таймер обратного отсчёта для акции с синхронизацией по серверу', 'Чтобы перезагрузка страницы не сбрасывала счётчик скидки.'],
+  ['fl_043', 6, 40, 30, 1.95, 12, 'Настроить сбор ошибок фронтенда в бесплатный Sentry', 'Подключение SDK и проброс source maps для читаемых стектрейсов.'],
+  ['fl_044', 6, 30, 22, 1.45, 8, 'Починить сортировку цен в каталоге (сортировало как строки)', 'Вместо 100, 20, 300 сделать нормальную числовую сортировку.'],
+  ['fl_045', 6, 35, 27, 1.75, 10, 'Написать скрипт проверки битых ссылок на сайте из 500 страниц', 'Асинхронный обход и отчёт со всеми страницами, отдающими 404.'],
+  ['fl_046', 7, 40, 29, 1.90, 11, 'Сделать кастомный аудиоплеер для лендинга диктора', 'Волна звука на Canvas, переключение демо-записей и скорость 1.5x.'],
+  ['fl_047', 7, 30, 23, 1.50, 8, 'Настроить защиту формы обратной связи через Cloudflare Turnstile', 'Заказчика завалили спам-предложениями продвижения сайтов.'],
+  ['fl_048', 7, 45, 33, 2.10, 13, 'Написать конвертер банковской выписки 1С в таблицу учёта', 'Разбор текстового файла клиент-банка по статьям расходов.'],
+  ['fl_049', 7, 35, 25, 1.60, 9, 'Исправить утечку памяти в бесконечном скролле ленты новостей', 'Виртуализация списка и очистка невидимых DOM-узлов.'],
+  ['fl_050', 8, 40, 30, 1.95, 12, 'Поднять локальный тестовый контур на Docker для трёх микросервисов', 'Единый docker-compose.yml с базой, кэшем и переменными окружения.'],
+  ['fl_051', 8, 30, 22, 1.45, 8, 'Сделать автосохранение черновика статьи в админке', 'Дамп текста в IndexedDB каждые 5 секунд на случай закрытия вкладки.'],
+  ['fl_052', 8, 35, 26, 1.75, 10, 'Написать скрипт пакетного сжатия фотографий в формат WebP', 'Рекурсивный обход папок с сохранением структуры каталогов.'],
+  ['fl_053', 8, 45, 34, 2.10, 12, 'Сверстать страницу тарифов с переключателем «Месяц / Год (-20%)»', 'Анимированный пересчёт цен и выделение активного плана.'],
+  ['fl_054', 8, 25, 18, 1.20, 6, 'Настроить вебхук уведомлений о падении контейнеров в Discord', 'Алерт с последними 20 строками логов при ненулевом коде выхода.'],
+  ['fl_055', 8, 35, 25, 1.65, 9, 'Починить обрезку длинных заголовков карточек через line-clamp', 'Сделать ровную сетку одинаковой высоты на любых экранах.'],
+
+  // === TIER 2: DAYS 9-18 (55 cards, reward $1.90 - $3.30) ===
+  ['fl_056', 9, 40, 30, 2.15, 12, 'Интегрировать оплату через СБП с генерацией динамического QR', 'Обработка колбэка от банка и смена статуса заказа в реальном времени.'],
+  ['fl_057', 9, 45, 34, 2.40, 14, 'Разработать Telegram-бота для записи в барбершоп', 'Выбор мастера, свободных слотов времени и напоминание за 2 часа.'],
+  ['fl_058', 9, 35, 28, 2.00, 11, 'Ускорить тяжёлый SQL-запрос аналитики продаж в 15 раз', 'Заменить подзапросы на CTE и добавить составной индекс.'],
+  ['fl_059', 9, 50, 38, 2.75, 16, 'Написать Chrome-расширение для копирования контактов из резюме', 'Парсинг страницы кандидата и отправка карточки в HR-систему.'],
+  ['fl_060', 10, 40, 32, 2.25, 13, 'Настроить двустороннюю синхронизацию остатков МойСклад и сайта', 'Обмен по REST API каждые 10 минут с обработкой лимитов запросов.'],
+  ['fl_061', 10, 45, 35, 2.50, 14, 'Собрать дашборд конверсий отдела продаж на Chart.js', 'Воронка этапов, средний чек и фильтр по менеджерам.'],
+  ['fl_062', 10, 35, 26, 1.95, 10, 'Вылечить гонку данных (Race Condition) при бронировании билетов', 'Два покупателя одновременно забирали одно и то же место в зале.'],
+  ['fl_063', 10, 50, 40, 2.90, 17, 'Перенести 12 000 товаров со старого движка на новую схему БД', 'Скрипт миграции с маппингом категорий, характеристик и редиректов.'],
+  ['fl_064', 11, 40, 30, 2.20, 12, 'Реализовать авторизацию по одноразовому коду в Telegram', 'Вход на сайт без пароля и дорогих SMS-шлюзов.'],
+  ['fl_065', 11, 45, 36, 2.60, 15, 'Написать парсер судебных дел и банкротств по ИНН контрагента', 'Автоматическая проверка надёжности поставщиков перед оплатой.'],
+  ['fl_066', 11, 35, 28, 2.05, 11, 'Настроить кэширование каталога в Redis с инвалидацией по тегам', 'Снизить нагрузку на основную базу данных в часы распродаж.'],
+  ['fl_067', 11, 55, 42, 3.10, 18, 'Сделать конструктор коммерческих предложений с выгрузкой в PDF', 'Менеджер выбирает услуги галочками и получает документ с печатью.'],
+  ['fl_068', 12, 40, 32, 2.30, 13, 'Прикрутить полнотекстовый поиск с учётом опечаток и морфологии', 'Чтобы по запросу «кросовки найк» находились нужные модели.'],
+  ['fl_069', 12, 45, 35, 2.55, 14, 'Разработать модуль расчёта доставки СДЭК и Боксберри', 'Подтягивание пунктов выдачи на карту и расчёт габаритов коробки.'],
+  ['fl_070', 12, 35, 27, 2.00, 11, 'Исправить падение воркера очереди задач при обрыве соединения', 'Graceful shutdown и автоматический переподъём с экспоненциальной паузой.'],
+  ['fl_071', 12, 50, 38, 2.85, 16, 'Написать систему промокодов с правилами совместимости', 'Фиксированная скидка, процент, подарок и лимит применений на аккаунт.'],
+  ['fl_072', 13, 40, 31, 2.25, 12, 'Сверстать интерактивную шахматку квартир для застройщика', 'Фильтрация по этажу, числу комнат, цене за метр и статусу брони.'],
+  ['fl_073', 13, 45, 36, 2.65, 15, 'Автоматизировать генерацию актов и УПД для бухгалтерии', 'Скрипт заполняет реквизиты из карточки сделки без ручного ввода.'],
+  ['fl_074', 13, 35, 28, 2.10, 11, 'Закрыть SQL-инъекцию и XSS-уязвимости в самописной админке', 'Аудит старого PHP-кода и перевод всех запросов на prepared statements.'],
+  ['fl_075', 13, 55, 44, 3.20, 18, 'Собрать Telegram Mini App для заказа еды из локальной пиццерии', 'Кастомизация бортиков, корзина и статус «Готовится в печи».'],
+  ['fl_076', 14, 40, 32, 2.35, 13, 'Настроить балансировщик Nginx для двух бэкенд-серверов', 'Health-check опросы и плавный вывод узла из ротации при деплое.'],
+  ['fl_077', 14, 45, 35, 2.60, 14, 'Написать скрипт авто-репрайсера для продавца на маркетплейсе', 'Удержание цены на 1 рубль ниже конкурента, но не ниже минимальной маржи.'],
+  ['fl_078', 14, 35, 27, 2.00, 11, 'Оптимизировать сборку Webpack/Vite: бандл весил 6 мегабайт', 'Code splitting, динамические импорты и вынос локалей Moment.js.'],
+  ['fl_079', 14, 50, 39, 2.95, 16, 'Разработать систему реферальных ссылок и начисления бонусов', 'Двухуровневая атрибуция по cookie и защита от саморефералов.'],
+  ['fl_080', 15, 40, 31, 2.30, 12, 'Подключить онлайн-кассу 54-ФЗ для автоматической пробивки чеков', 'Формирование тегов номенклатуры, НДС и отправка чека на почту.'],
+  ['fl_081', 15, 45, 37, 2.70, 15, 'Сделать канбан-доску задач с drag-and-drop для небольшой студии', 'Перетаскивание карточек между колонками с оптимистичным UI.'],
+  ['fl_082', 15, 35, 28, 2.10, 11, 'Написать парсер отзывов с гео-сервисов для сети кофеен', 'Ежедневный сбор новых оценок и алерт управляющему при оценке ниже 4.'],
+  ['fl_083', 15, 55, 43, 3.25, 18, 'Внедрить ролевую модель доступа (RBAC) в корпоративный портал', 'Разграничение прав для менеджеров, бухгалтеров, РОПов и админов.'],
+  ['fl_084', 16, 40, 33, 2.40, 13, 'Починить рассинхрон часовых поясов в календаре телемедицины', 'Врачи из Москвы и пациенты из Владивостока путались во времени приёма.'],
+  ['fl_085', 16, 45, 36, 2.65, 15, 'Написать сервис генерации OG-картинок для соцсетей на лету', 'Рендеринг заголовка статьи и аватарки автора в красивый баннер.'],
+  ['fl_086', 16, 35, 29, 2.15, 12, 'Настроить мониторинг сервера на Prometheus + Grafana за вечер', 'Графики CPU, RAM, диска и алерты при заполнении на 85%.'],
+  ['fl_087', 16, 50, 40, 3.00, 17, 'Собрать бота для проведения тайного покупателя с фотоотчётами', 'Пошаговый чек-лист, проверка геолокации и выгрузка в Google Sheets.'],
+  ['fl_088', 17, 40, 32, 2.35, 13, 'Реализовать загрузку тяжёлых видеофайлов чанками с докачкой', 'Чтобы при обрыве мобильного интернета прогресс не сбрасывался в ноль.'],
+  ['fl_089', 17, 45, 36, 2.70, 15, 'Написать модуль импорта прайс-листов от 15 разных поставщиков', 'У каждого своя структура колонок Excel — нужен единый маппер.'],
+  ['fl_090', 17, 35, 28, 2.10, 11, 'Вычистить майнер с взломанного сервера и закрыть дыру в SSH', 'Отключение входа по паролю, смена ключей и настройка fail2ban.'],
+  ['fl_091', 17, 55, 44, 3.30, 18, 'Разработать интерактивный 3D-превьюер гравировки на термокружках', 'Наложение пользовательского текста на развёртку на HTML5 Canvas.'],
+  ['fl_092', 18, 40, 33, 2.45, 13, 'Сделать вебхук-интеграцию между AmoCRM и сервисом рассылок', 'При переходе сделки на этап «Оплачено» отправлять велком-письмо.'],
+  ['fl_093', 18, 45, 37, 2.75, 15, 'Написать систему бронирования переговорных комнат для офиса', 'Сетка слотов по 30 минут, защита от накладок и бот-напоминалка.'],
+  ['fl_094', 18, 35, 29, 2.20, 12, 'Оптимизировать рендеринг таблицы на 50 000 строк в браузере', 'Заменить обычный DOM на виртуальный скролл с частотой 60 FPS.'],
+  ['fl_095', 18, 50, 41, 3.05, 17, 'Собрать агрегатор курсов обменников с графиком лучшего спреда', 'Опрос 20 публичных API каждые 30 секунд и фильтрация фейковых заявок.'],
+  ['fl_096', 18, 40, 32, 2.40, 13, 'Починить утечку соединений с базой данных в serverless-функциях', 'Внедрение пулера PgBouncer перед основным инстансом БД.'],
+  ['fl_097', 18, 45, 36, 2.70, 14, 'Написать автотесты на Playwright для критического пути покупки', 'Проверка авторизации, корзины, купона и перехода на эквайринг.'],
+  ['fl_098', 18, 35, 28, 2.15, 11, 'Сделать генератор UTM-меток со встроенным сокращателем ссылок', 'Внутренний инструмент для отдела маркетинга со статистикой кликов.'],
+  ['fl_099', 18, 50, 39, 2.95, 16, 'Разработать личный кабинет оптового дилера с индивидуальными скидками', 'История заказов, повтор в один клик и сверка взаиморасчётов.'],
+  ['fl_100', 18, 40, 31, 2.35, 12, 'Настроить автоматическую склейку аудиодорожек для подкаст-студии', 'Нормализация громкости по LUFS, компрессия и добавление джинглов.'],
+  ['fl_101', 12, 40, 31, 2.30, 12, 'Написать плагин расчёта себестоимости блюд по техкартам', 'Списание граммовок со склада при каждом пробитом чеке на кассе.'],
+  ['fl_102', 13, 45, 35, 2.55, 14, 'Сделать виджет онлайн-записи на тест-драйв для автосалона', 'Выбор комплектации, проверка прав и интеграция с колл-центром.'],
+  ['fl_103', 14, 35, 28, 2.10, 11, 'Починить дублирование уведомлений в WebSocket-чате техподдержки', 'При переподключении клиента вешалось по пять слушателей подряд.'],
+  ['fl_104', 15, 50, 39, 2.90, 16, 'Собрать парсер тендеров и госзакупок по ключевым словам', 'Мониторинг новых лотов по 44-ФЗ и расчёт начальной маржинальности.'],
+  ['fl_105', 16, 40, 32, 2.40, 13, 'Внедрить идемпотентные ключи в API списания внутренней валюты', 'Исключить повторное списание баллов при лагах мобильной сети.'],
+  ['fl_106', 17, 45, 36, 2.70, 15, 'Разработать интерактивный тест-опросник с ветвлением сценариев', 'В зависимости от ответов формируется персональная смета ремонта.'],
+  ['fl_107', 17, 35, 29, 2.15, 12, 'Настроить гео-роутинг запросов к ближайшему CDN-узлу', 'Сокращение пинга для пользователей из Сибири и Дальнего Востока.'],
+  ['fl_108', 18, 50, 40, 3.00, 17, 'Написать систему автоматического распределения лидов между операторами', 'Учёт графика смен, текущей нагрузки и конверсии каждого сотрудника.'],
+  ['fl_109', 11, 40, 31, 2.25, 12, 'Сделать экспорт финансовых графиков в брендированный Excel-отчёт', 'Форматирование ячеек, формулы итогов и диаграммы через библиотеку.'],
+  ['fl_110', 15, 45, 35, 2.60, 14, 'Починить синхронизацию календаря бронирований между Airbnb и сайтом', 'Парсинг iCal-ссылок каждые 5 минут для защиты от овербукинга.'],
+
+  // === TIER 3: DAYS 19-30 (45 cards, reward $2.90 - $5.20) ===
+  ['fl_111', 19, 45, 38, 3.20, 16, 'Спроектировать и запустить микросервис биллинга подписок', 'Рекуррентные списания, грейс-период, ретраи и вебхуки отмены.'],
+  ['fl_112', 19, 50, 42, 3.60, 18, 'Переписать легаси-ядро расчёта логистики с PHP 5.6 на Go', 'Сократить время построения маршрута курьеров с 12 секунд до 80 мс.'],
+  ['fl_113', 19, 40, 34, 2.95, 14, 'Внедрить сквозную аналитику от клика по рекламе до повторной покупки', 'Связка рекламных кабинетов, CRM и когортного отчёта окупаемости.'],
+  ['fl_114', 20, 55, 46, 4.00, 20, 'Разработать движок динамического ценообразования для сервиса такси', 'Учёт погоды, пробок, спроса по гексагонам и свободных бортов.'],
+  ['fl_115', 20, 45, 37, 3.30, 16, 'Настроить zero-downtime миграцию боевой базы на 200 ГБ', 'Репликация через логические слоты без остановки приёма заказов.'],
+  ['fl_116', 20, 50, 41, 3.65, 18, 'Собрать систему антифрода для бонусной программы ритейлера', 'Выявление ферм аккаунтов по фингерпринту устройства и графу транзакций.'],
+  ['fl_117', 21, 45, 36, 3.25, 15, 'Оптимизировать высоконагруженный эндпоинт под Чёрную Пятницу', 'Выдержать 5000 RPS за счёт локального in-memory кэша и батчинга.'],
+  ['fl_118', 21, 55, 48, 4.20, 21, 'Написать визуальный редактор бизнес-процессов на узлах (Node Graph)', 'Соединение блоков стрелками, валидация циклов и сериализация в JSON.'],
+  ['fl_119', 21, 40, 35, 3.05, 15, 'Внедрить шифрование персональных данных на уровне полей БД', 'Безопасное хранение паспортов с ротацией мастер-ключей.'],
+  ['fl_120', 22, 50, 44, 3.85, 19, 'Разработать голосовой IVR-робот для диспетчерской службы ЖКХ', 'Распознавание адреса аварии, приём показаний счётчиков и запись в CRM.'],
+  ['fl_121', 22, 45, 38, 3.40, 16, 'Починить распределённую блокировку в кластере из 8 нод', 'Реализация алгоритма Redlock, чтобы воркеры не дублировали выплаты.'],
+  ['fl_122', 22, 60, 50, 4.50, 22, 'Собрать мультиагентный пайплайн проверки юридических договоров', 'Выделение рискованных пунктов, штрафов и несоответствий ГК РФ.'],
+  ['fl_123', 23, 45, 39, 3.45, 17, 'Написать кастомный видео-стриминговый прокси с адаптивным битрейтом', 'Нарезка HLS-сегментов на лету и защита ссылок временными токенами.'],
+  ['fl_124', 23, 50, 43, 3.80, 19, 'Разработать систему диспетчеризации выездных инженеров на карте', 'Гео-трекинг в реальном времени и назначение ближайшей бригады.'],
+  ['fl_125', 23, 40, 35, 3.10, 15, 'Провести нагрузочное тестирование и устранить дедлоки в транзакциях', 'Развязка взаимных блокировок при параллельном обновлении балансов.'],
+  ['fl_126', 24, 55, 47, 4.30, 21, 'Сделать офлайн-режим (Offline-First) для мобильного приложения склада', 'Синхронизация инвентаризации через CRDT после выхода из подвала.'],
+  ['fl_127', 24, 45, 38, 3.50, 17, 'Интегрировать систему электронного документооборота (ЭДО) по API', 'Подписание накладных УКЭП и проверка штампа времени.'],
+  ['fl_128', 24, 50, 44, 3.90, 19, 'Написать движок персонализированных товарных рекомендаций', 'Коллаборативная фильтрация по матрице покупок и просмотров.'],
+  ['fl_129', 25, 60, 52, 4.70, 23, 'Разработать торговый терминал с графиками свечей в реальном времени', 'Поток котировок по WebSocket, стакан заявок и горячие клавиши.'],
+  ['fl_130', 25, 45, 39, 3.55, 17, 'Собрать систему автоматического сплит-тестирования (A/B) без мигания', 'Распределение трафика на уровне Edge-воркера и расчёт p-value.'],
+  ['fl_131', 25, 50, 45, 4.00, 20, 'Перевести монолитную базу логов на колоночную ClickHouse', 'Агрегация миллиарда событий за долю секунды вместо таймаутов.'],
+  ['fl_132', 26, 55, 48, 4.40, 21, 'Написать ядро системы лояльности с каскадными правилами акций', 'Расчёт акции «3 по цене 2» совместно с персональным кэшбэком.'],
+  ['fl_133', 26, 45, 40, 3.60, 17, 'Реализовать единый вход (SSO / OAuth2) для экосистемы из 5 сайтов', 'Централизованный сервер авторизации с поддержкой 2FA.'],
+  ['fl_134', 26, 50, 44, 3.95, 19, 'Создать автоматический генератор документации и SDK из OpenAPI-схемы', 'Выпуск типизированных клиентов под TypeScript и Python при каждом релизе.'],
+  ['fl_135', 27, 60, 54, 4.90, 24, 'Спроектировать отказоустойчивый шлюз приёма платежей с фолбэком', 'Автопереключение между тремя банками-эквайерами при просадке конверсии.'],
+  ['fl_136', 27, 45, 39, 3.65, 17, 'Вылечить критическую деградацию сборщика мусора в высоконагруженном узле', 'Профилирование аллокаций и пулинг объектов в горячем цикле.'],
+  ['fl_137', 27, 55, 49, 4.50, 22, 'Написать систему компьютерного зрения для подсчёта паллет на складе', 'Детекция коробок с камеры погрузчика и сверка с накладной.'],
+  ['fl_138', 28, 50, 45, 4.10, 20, 'Разработать распределённый планировщик задач с гарантией доставки', 'Очередь с дедупликацией, приоритетами и панелью ручного перезапуска.'],
+  ['fl_139', 28, 60, 55, 5.10, 24, 'Построить единую шину событий на базе брокера сообщений для финтеха', 'Асинхронная проводка платежей, уведомлений и бухгалтерского клиринга.'],
+  ['fl_140', 28, 45, 40, 3.70, 18, 'Провести полный аудит безопасности и закрыть вектор SSRF-атаки', 'Изоляция сетевых вызовов превьюера ссылок в песочнице.'],
+  ['fl_141', 29, 55, 50, 4.65, 22, 'Разработать модуль прогнозирования кассовых разрывов для ERP', 'Анализ графика платежей, дебиторки и сезонных просадок выручки.'],
+  ['fl_142', 29, 60, 56, 5.20, 25, 'Собрать движок автоматического урегулирования убытков для страховой', 'Оценка повреждений по фото и расчёт сметы ремонта по каталогам деталей.'],
+  ['fl_143', 29, 50, 44, 4.05, 19, 'Настроить мульти-региональную репликацию сессий без потери состояния', 'Мгновенное переключение трафика между дата-центрами при аварии.'],
+  ['fl_144', 30, 55, 50, 4.80, 22, 'Финальный релиз корпоративной платформы и сдача проекта комиссии', 'Полный прогон интеграционных тестов, документация и подписание акта.'],
+  ['fl_145', 30, 60, 55, 5.20, 24, 'Экстренное спасение релиза перед презентацией инвесторам', 'Исправление пяти критических блокеров за два часа до выхода на сцену.'],
+  ['fl_146', 19, 45, 38, 3.35, 16, 'Написать конвертер чертежей AutoCAD в интерактивную веб-карту', 'Парсинг слоёв DXF и быстрый рендеринг векторных примитивов на WebGL.'],
+  ['fl_147', 20, 50, 42, 3.70, 18, 'Сделать систему контроля качества звонков с авто-транскрибацией', 'Выявление грубости операторов и пропущенных скриптов допродаж.'],
+  ['fl_148', 21, 45, 39, 3.45, 17, 'Внедрить механизм Event Sourcing для финансового реестра', 'Неизменяемый журнал всех операций с возможностью восстановления баланса на любую секунду.'],
+  ['fl_149', 22, 55, 46, 4.15, 20, 'Разработать систему защиты цифрового контента от складчин и сливов', 'Динамическая маркировка видеопотока невидимыми водяными знаками.'],
+  ['fl_150', 23, 50, 43, 3.85, 19, 'Собрать автоматический оптимизатор рекламных ставок по ROI', 'Отключение неэффективных ключей и перелив бюджета в конвертящие связки.'],
+  ['fl_151', 24, 45, 40, 3.55, 17, 'Написать прокси-адаптер для устаревшего банковского SOAP-протокола', 'Превращение громоздких XML-конвертов в чистый современный JSON API.'],
+  ['fl_152', 25, 55, 48, 4.35, 21, 'Создать платформу вебинаров с синхронизацией слайдов и живым чатом', 'Низкая задержка вещания и встроенные всплывающие кнопки спецпредложений.'],
+  ['fl_153', 26, 50, 44, 3.95, 19, 'Разработать модуль расчёта зарплаты сдельных бригад на производстве', 'Учёт КТУ, сменных норм, брака и сверхурочных коэффициентов.'],
+  ['fl_154', 27, 55, 49, 4.55, 22, 'Построить графовую систему поиска аффилированных компаний', 'Визуализация цепочек учредителей и перекрёстных связей на Canvas.'],
+  ['fl_155', 28, 60, 52, 4.85, 23, 'Выкатить архитектуру горячего резервирования для медицинской клиники', 'Бесшовная работа расписания и электронных карт даже при обрыве оптики.']
+];
+
+// Ventures: [id, minDay, ctxCost, tknCost, rewardCash, baseRisk, failPenaltyCash, title, desc]
+const VENTURE_CARDS = [
+  ['vn_001', 2, 50, 45, 3.40, 34, 0.80, 'Спор на форуме: переписать алгоритм быстрее автора за 30 минут', 'Если уложимся в лимит памяти — заберём призовой банк треда.'],
+  ['vn_002', 3, 55, 50, 3.80, 36, 1.00, 'Охота за багом в открытом конкурсе смарт-контрактов', 'Либо найдём уязвимость раньше конкурентов, либо сожжём контекст впустую.'],
+  ['vn_003', 4, 50, 48, 3.60, 35, 0.90, 'Срочный заказ с дедлайном «через час» по двойному тарифу', 'Клиент платит сверхурочные, но за малейший косяк удержит неустойку.'],
+  ['vn_004', 5, 55, 52, 4.10, 37, 1.10, 'Запуск вирального генератора мемов под горячий инфоповод', 'Хайп живёт ровно сутки — нужно успеть влететь в тренды.'],
+  ['vn_005', 6, 60, 55, 4.50, 38, 1.20, 'Блиц-турнир по алгоритмическому программированию с призовыми', 'Пять олимпиадных задач на графы и динамику под жёстким таймером.'],
+  ['vn_006', 7, 55, 50, 4.20, 36, 1.00, 'Арбитраж доменов с истекающим сроком регистрации', 'Перехватить красивые имена и перепродать стартаперам в тот же вечер.'],
+  ['vn_007', 8, 60, 58, 4.80, 39, 1.30, 'Ночной спринт: спасти упавший сайт билетного оператора перед концертом', 'Огромный трафик бьёт по базе. Справимся — щедрый бонус, упадём — штраф.'],
+  ['vn_008', 9, 55, 54, 4.60, 38, 1.20, 'Выпустить платный шаблон дашборда на маркетплейсе тем', 'Если пройдём строгую модерацию с первой попытки — снимем сливки с релиза.'],
+  ['vn_009', 10, 60, 60, 5.10, 40, 1.40, 'Бот для ловли редких слотов визового центра под заказ', 'Жёсткая антибот-защита. Любая галлюцинация в заголовках приведёт к бану IP.'],
+  ['vn_010', 11, 65, 62, 5.40, 41, 1.50, 'Ворваться на 24-часовой финтех-хакатон в одиночку', 'Собрать рабочий MVP без сна и презентавать жюри на рассвете.'],
+  ['vn_011', 12, 55, 56, 4.90, 39, 1.30, 'Аудит безопасности закрытого API за вознаграждение', 'Оплата только за подтверждённые критические находки (No Win — No Fee).'],
+  ['vn_012', 13, 60, 60, 5.30, 40, 1.40, 'Скрипт мгновенного выкупа лимитированных кроссовок на дропе', 'Тайминг решает всё: задержка в 200 мс оставит нас с пустыми руками.'],
+  ['vn_013', 14, 65, 65, 5.80, 42, 1.60, 'Реверс-инжиниринг бинарного протокола старого промышленного станка', 'Документация утеряна в 90-х. Надо угадать структуру пакетов по дампам.'],
+  ['vn_014', 15, 60, 62, 5.60, 41, 1.50, 'Запуск микро-игры на главной странице популярного портала', 'Встроенная монетизация рекламой: либо виральный взрыв, либо провал.'],
+  ['vn_015', 16, 65, 66, 6.10, 43, 1.70, 'Алгоритмический маркет-мейкинг на низколиквидных парах', 'Ловим спред в стакане. Галлюцинация в знаке запятой стоит реальных денег.'],
+  ['vn_016', 17, 60, 64, 5.90, 42, 1.60, 'Восстановление повреждённой таблицы транзакций из raw-секторов диска', 'Клиент готов заплатить куш, если вернём хотя бы 95% записей без битых строк.'],
+  ['vn_017', 18, 65, 68, 6.40, 44, 1.80, 'Защита инфраструктуры клиента во время активной L7 DDoS-атаки', 'Пишем правила фильтрации прямо под огнём в реальном времени.'],
+  ['vn_018', 19, 70, 70, 6.80, 45, 2.00, 'Грантовый конкурс на лучшего ИИ-ассистента для медицины', 'Строгая проверка точности ответов на контрольной выборке клинических кейсов.'],
+  ['vn_019', 20, 65, 68, 6.60, 44, 1.90, 'Срочная миграция горящего продакшена с заблокированного облака', 'На перенос всех баз и хранилищ осталось ровно 4 часа до отключения рубильника.'],
+  ['vn_020', 21, 70, 72, 7.10, 46, 2.10, 'Охота за Zero-Day уязвимостью в популярном корпоративном плагине', 'Высокая сложность анализа исходников, но максимальный грейд выплаты.'],
+  ['vn_021', 22, 65, 70, 6.90, 45, 2.00, 'Арбитраж ставок фандинга между тремя биржами в момент волатильности', 'Требуется идеальная синхронизация ордеров и расчёт комиссий.'],
+  ['vn_022', 23, 70, 74, 7.40, 46, 2.20, 'Выкуп и экспресс-реанимация заброшенного расширения с 20 000 юзеров', 'Починить манифест v3 и выкатить премиум-подписку за один вечер.'],
+  ['vn_023', 24, 75, 76, 7.80, 47, 2.30, 'Тендер на разработку прототипа для крупного логистического холдинга', 'Победитель забирает оплату за пилот, проигравшие остаются ни с чем.'],
+  ['vn_024', 25, 70, 75, 7.60, 47, 2.20, 'Дешифровка кастомного обфускатора по заказу аналитического агентства', 'Снять четыре слоя виртуальной машины и восстановить чистый исходный код.'],
+  ['vn_025', 26, 75, 78, 8.20, 48, 2.40, 'Запуск вирусного AI-инструмента на ProductHunt в прайм-тайм', 'Битва за первое место дня: всё решают стабильность сервера и первые 3 часа.'],
+  ['vn_026', 27, 70, 76, 8.00, 47, 2.30, 'Ликвидация последствий крипто-локера на сервере застройщика', 'Найти уязвимость генератора ключей шифровальщика и спасти архивы проектов.'],
+  ['vn_027', 28, 75, 80, 8.60, 49, 2.50, 'Сверхсрочный контракт: переписать падающий шлюз в ночь распродажи', 'Ставки максимальны: за каждую минуту простоя заказчик теряет тысячи.'],
+  ['vn_028', 29, 80, 82, 9.10, 50, 2.70, 'Финальный рывок: закрыть горящий государственный субподряд за сутки', 'Горы бюрократических проверок и форматов, но выплата закрывает четверть цели.'],
+  ['vn_029', 30, 80, 85, 9.50, 50, 2.80, 'Ва-банк 30-го дня: блиц-аудит уязвимостей главного пула ликвидности', 'Последний шанс сорвать большой куш перед закрытием расчётного месяца!'],
+  ['vn_030', 5, 50, 48, 3.90, 36, 1.00, 'Пари с сеньором: ужать Docker-образ с 1.2 ГБ до 25 МБ без потери функций', 'Мультистейдж-сборка на Alpine и статическая линковка бинарника.'],
+  ['vn_031', 8, 55, 52, 4.40, 37, 1.15, 'Собрать снайпер-бота для аукциона редких коллекционных предметов', 'Ставка на последней секунде торгов с обходом капчи.'],
+  ['vn_032', 11, 60, 58, 5.00, 39, 1.35, 'Экстренная оптимизация шейдеров для инди-игры перед фестивалем Steam', 'FPS падает до 12 на встроенных видеокартах. Надо 60 FPS к утру.'],
+  ['vn_033', 14, 60, 62, 5.50, 41, 1.50, 'Написать детектор дипфейков для конкурса кибербезопасности', 'Анализ артефактов сжатия и мимики на тестовом датасете организаторов.'],
+  ['vn_034', 17, 65, 66, 6.20, 43, 1.75, 'Спасти базу заказов интернет-аптеки после неудачного обновления ORM', 'Миграция перемешала внешние ключи клиентов и рецептов.'],
+  ['vn_035', 20, 70, 70, 6.75, 45, 1.95, 'Разработать высокочастотный парсер спортивных коэффициентов (Вилки)', 'Задержка парсинга не должна превышать 150 миллисекунд.'],
+  ['vn_036', 22, 70, 72, 7.20, 46, 2.10, 'Выиграть закрытый питч на автоматизацию документооборота банка', 'Живая демонстрация работы агента на реальных сканах договоров.'],
+  ['vn_037', 24, 75, 75, 7.65, 47, 2.25, 'Расследование утечки трафика: найти скрытый бэкдор в цепочке пакетов', 'Анализ дерева зависимостей из 800 npm-модулей на время.'],
+  ['vn_038', 26, 75, 78, 8.10, 48, 2.40, 'Создать генератор юридических претензий с оплатой за выигранный спор', 'Success-fee модель: получаем процент от моментально возвращённых средств.'],
+  ['vn_039', 28, 80, 80, 8.80, 49, 2.60, 'Перехват и нейтрализация MEV-бота в тестовой песочнице фонда', 'Интеллектуальная дуэль алгоритмов за грант разработчика.'],
+  ['vn_040', 29, 80, 84, 9.30, 50, 2.75, 'Аварийный запуск резервного процессинга для крупного маркетплейса', 'Ночной марафон на пределе контекста ради максимального гонорара.']
+];
+
+// SaaS Daemons: [id, minDay, ctxCost, tknCost, passiveDaily, tknUpkeep, baseRisk, title, desc]
+const SAAS_CARDS = [
+  ['saas_001', 1, 45, 40, 0.30, 5, 8, 'Бот-саммаризатор длинных видео и лекций', 'Подписочный микро-сервис: выжимка часовых роликов в 5 тезисов.'],
+  ['saas_002', 1, 40, 36, 0.25, 4, 7, 'Витрина SVG-иконок и технических паттернов на Gumroad', 'Разработчики покупают готовые наборы пиктограмм по $3.'],
+  ['saas_003', 2, 45, 42, 0.32, 5, 9, 'Сервис мониторинга истечения SSL и доменов', 'Пингует сайты инди-хакеров и шлёт уведомления в Telegram за мелкий прайс.'],
+  ['saas_004', 2, 50, 45, 0.35, 6, 10, 'Бот расшифровки голосовых сообщений для рабочих чатов', 'Фримиум: до 2 минут бесплатно, безлимит для команд за подписку.'],
+  ['saas_005', 3, 50, 46, 0.38, 6, 10, 'Демон программного SEO-трафика под микро-ниши', 'Автогенерация справочных таблиц и калькуляторов с партнёрскими ссылками.'],
+  ['saas_006', 4, 55, 50, 0.42, 7, 11, 'Микро-SaaS «Прожарка IT-резюме перед собеседованием»', 'Соискатели платят за разбор слабых мест и оптимизацию под ATS-фильтры.'],
+  ['saas_007', 5, 50, 48, 0.40, 6, 11, 'Плагин авто-ответов на отзывы для селлеров маркетплейсов', 'Генерирует вежливые ответы покупателям с учётом купленного артикула.'],
+  ['saas_008', 6, 55, 52, 0.45, 7, 12, 'Парсер горячих лидов и заказов из профильных Telegram-чатов', 'Мгновенно пересылает заявки «ищу подрядчика» платным подписчикам.'],
+  ['saas_009', 7, 50, 46, 0.38, 6, 10, 'Утилита конвертации банковских PDF-выписок в чистый CSV/Excel', 'Бухгалтеры на аутсорсе оформляют подписку ради экономии времени.'],
+  ['saas_010', 8, 55, 54, 0.48, 7, 13, 'Генератор карточек и инфографики для товаров на базе шаблонов', 'Удаление фона, плашки преимуществ и пакетный рендер под размеры площадок.'],
+  ['saas_011', 9, 60, 56, 0.50, 8, 13, 'Бот проверки контрагентов и судебных исков по ИНН в один клик', 'Юристы и закупщики проверяют новые компании прямо со смартфона.'],
+  ['saas_012', 10, 55, 52, 0.46, 7, 12, 'Сервис кросспостинга из Telegram-канала в ВК и Дзен с рерайтом', 'Автоматически адаптирует форматирование и хештеги под каждую платформу.'],
+  ['saas_013', 11, 60, 58, 0.52, 8, 14, 'Агрегатор скидок и ошибочных цен в магазинах электроники', 'Подписчики закрытого канала платят за мгновенные пуши о падении цен.'],
+  ['saas_014', 12, 55, 54, 0.48, 7, 13, 'Виджет «Умный калькулятор доставки» для конструкторов сайтов', 'Подключается одной строкой скрипта за абонентскую плату.'],
+  ['saas_015', 13, 60, 60, 0.55, 8, 14, 'API очистки и валидации телефонных и email-баз для маркетологов', 'Проверка существованияMX-записей и отсев одноразовых почтовых ящиков.'],
+  ['saas_016', 14, 65, 62, 0.58, 9, 15, 'Бот-ассистент для риелторов: авто-подбор новостроек под бюджет', 'Формирует брендированную PDF-подборку без контактов застройщика за минуту.'],
+  ['saas_017', 15, 60, 58, 0.54, 8, 14, 'Сервис автоматических субтитров для коротких вертикальных видео', 'Распознавание речи и анимация ударных слов для блогеров.'],
+  ['saas_018', 16, 65, 64, 0.60, 9, 15, 'Мониторинг позиций сайта в выдаче (SERP Tracker) на лёгких прокси', 'Ежедневные отчёты для SEO-специалистов по демпинговому тарифу.'],
+  ['saas_019', 17, 60, 60, 0.56, 8, 14, 'Генератор политики конфиденциальности и оферты под 152-ФЗ', 'Индивидуальные предприниматели покупают готовый пакет документов для сайта.'],
+  ['saas_020', 18, 65, 65, 0.62, 9, 16, 'Трекер дешёвых авиабилетов и чартеров по сложным маршрутам', 'Находит стыковки, которые не видят стандартные агрегаторы.'],
+  ['saas_021', 19, 70, 68, 0.65, 10, 16, 'Микро-CRM для репетиторов и частных преподавателей в Telegram', 'Расписание уроков, учёт абонементов и авто-напоминания об оплате.'],
+  ['saas_022', 20, 65, 64, 0.60, 9, 15, 'Плагин автоматической перелинковки статей для контентных сайтов', 'Анализирует семантику блога и расставляет внутренние ссылки.'],
+  ['saas_023', 21, 70, 70, 0.68, 10, 17, 'Сервис детекции скликивания контекстной рекламы (Click Fraud Shield)', 'Блокирует ботов конкурентов и экономит рекламный бюджет клиентов.'],
+  ['saas_024', 22, 65, 66, 0.64, 9, 16, 'Генератор тестовых баз данных с реалистичными профилями для QA', 'Тестировщики покупают подписку для нагрузочных прогонов.'],
+  ['saas_025', 23, 70, 72, 0.70, 10, 17, 'Бот-аудитор рекламных интеграций у блогеров (проверка накруток)', 'Анализ вовлечённости, пересечения аудитории и истории переименований.'],
+  ['saas_026', 24, 75, 74, 0.75, 11, 18, 'Облачный сервис рендеринга чеков и этикеток со штрихкодами по API', 'Используется сотнями мелких складов и фулфилмент-центров.'],
+  ['saas_027', 25, 70, 70, 0.72, 10, 17, 'Авто-переводчик документации GitHub-репозиториев на 12 языков', 'Подключается как GitHub App и обновляет README при каждом пуше.'],
+  ['saas_028', 26, 75, 75, 0.78, 11, 18, 'Сканер доступности сайтов (Accessibility Audit) для зарубежного рынка', 'Автоматический поиск нарушений контрастности и ARIA-атрибутов.'],
+  ['saas_029', 27, 70, 72, 0.74, 10, 17, 'Платформа проведения быстрых квизов и розыгрышей для кофеен', 'Готовая механика сбора базы гостей за чашку кофе по подписке.'],
+  ['saas_030', 28, 75, 76, 0.80, 11, 18, 'Интеллектуальный прокси-кэш для экономии запросов к внешним API', 'Кэширует идентичные запросы компаний и берёт процент от сэкономленного.']
+];
+
+// MCP & Agent Upgrades: [id, minDay, ctxCost, tknCost, effectLabel, effectType, effectVal, baseRisk, title, desc]
+const UPGRADE_CARDS = [
+  ['up_001', 1, 35, 30, '-12% расход TKN', 'tknDiscount', 0.12, 4, 'Внедрить Prompt Caching (Кэш системных префиксов)', 'Повторные инструкции больше не сжигают месячный пул токенов вхолостую.'],
+  ['up_002', 1, 35, 32, '-8% шанс галлюцинаций', 'riskReduce', 8, 4, 'Локальный векторный индекс документации (RAG)', 'Точный поиск по мануалам вместо гадания по памяти модели.'],
+  ['up_003', 2, 40, 35, '+15 макс. CTX в день', 'maxCtxBonus', 15, 5, 'Квантование истории диалога (Sliding Window)', 'Старые сообщения сжимаются в компактные сводки, освобождая окно контекста.'],
+  ['up_004', 2, 40, 34, '+12% к выплатам фриланса', 'freelanceBoost', 0.12, 4, 'Оформить эталонный профиль и портфолио на GitHub', 'Заказчики видят зелёный граф коммитов и соглашаются на повышенный рейт.'],
+  ['up_005', 3, 40, 36, '-9% шанс галлюцинаций', 'riskReduce', 9, 5, 'Авто-линтер и песочница синтаксиса (Pre-commit Hook)', 'Перехватывает выдуманные методы и опечатки до отправки кода клиенту.'],
+  ['up_006', 4, 45, 38, '-12% расход TKN', 'tknDiscount', 0.12, 5, 'MCP-сервер AST-навигации по дереву символов', 'Читаем только нужные функции вместо загрузки тысяч строк файла в промпт.'],
+  ['up_007', 5, 45, 40, '+15 макс. CTX в день', 'maxCtxBonus', 15, 5, 'Маршрутизатор субагентов (Делегирование рутины)', 'Черновой поиск по файлам выполняется в отдельном изолированном потоке.'],
+  ['up_008', 6, 40, 36, '+12% к выплатам фриланса', 'freelanceBoost', 0.12, 5, 'Шаблонизатор коммерческих откликов с кейсами', 'Персонализированный разбор задачи клиента повышает средний чек заказа.'],
+  ['up_009', 7, 45, 42, '-10% шанс галлюцинаций', 'riskReduce', 10, 6, 'Строгая типизация выходных данных (JSON Schema Validator)', 'Принудительная проверка структуры ответа исключает битые форматы.'],
+  ['up_010', 8, 45, 40, '-10% расход TKN', 'tknDiscount', 0.10, 5, 'Минификация промптов и удаление стоп-слов', 'Сжатие технических заданий перед отправкой в инференс без потери смысла.'],
+  ['up_011', 9, 50, 44, '+15% к выплатам фриланса', 'freelanceBoost', 0.15, 6, 'Автоматический генератор видео-демо для сдачи работ', 'Клиенты в восторге от наглядных скринкастов и охотно платят бонусы.'],
+  ['up_012', 10, 50, 45, '+20 макс. CTX в день', 'maxCtxBonus', 20, 6, 'Иерархическая память эпизодов (Episodic Memory Graph)', 'Агент мгновенно вспоминает паттерны прошлых проектов без переполнения ОЗУ.'],
+  ['up_013', 11, 45, 42, '-10% шанс галлюцинаций', 'riskReduce', 10, 6, 'Модуль самопроверки Chain-of-Verification', 'Перед выдачей финального патча агент прогоняет чек-лист граничных случаев.'],
+  ['up_014', 12, 50, 46, '-12% расход TKN', 'tknDiscount', 0.12, 6, 'Семантический кэш типовых сниппетов и бойлерплейта', 'Стандартные CRUD-модули подставляются из локальной библиотеки за 0 токенов.'],
+  ['up_015', 13, 50, 45, '+15% к выплатам фриланса', 'freelanceBoost', 0.15, 6, 'Плагин авто-документирования и чистой архитектуры', 'Код выглядит так, будто над ним неделю трудился архитектор из бигтеха.'],
+  ['up_016', 14, 55, 48, '+1 слот SaaS-демонов', 'saasSlotBonus', 1, 7, 'Оркестратор фоновых контейнеров (Docker Swarm Lite)', 'Позволяет держать на 1 активного SaaS-демона больше без перегрузки канала.'],
+  ['up_017', 15, 50, 46, '-10% шанс галлюцинаций', 'riskReduce', 10, 6, 'Детерминированный режим сэмплирования (Temperature 0.0)', 'Отсекает рискованные творческие фантазии при генерации финансового кода.'],
+  ['up_018', 16, 55, 50, '+20 макс. CTX в день', 'maxCtxBonus', 20, 7, 'Аппаратное ускорение KV-кэша внимания (FlashAttention)', 'Увеличивает пропускную способность дневного окна контекста.'],
+  ['up_019', 17, 50, 48, '-10% расход TKN', 'tknDiscount', 0.10, 6, 'Дифференциальный патчер файлов (Unified Diff Mode)', 'Генерируем только изменённые строки вместо перезаписи всего файла целиком.'],
+  ['up_020', 18, 55, 52, '+18% к выплатам фриланса', 'freelanceBoost', 0.18, 7, 'Верифицированный бейдж «Топ-1% Исполнитель Биржи»', 'Открывает доступ к премиальным бюджетам и повышает доверие заказчиков.'],
+  ['up_021', 19, 55, 50, '-12% шанс галлюцинаций', 'riskReduce', 12, 7, 'Интеграция с формальным верификатором и SMT-солвером', 'Математическая проверка логических условий исключает фатальные баги.'],
+  ['up_022', 20, 60, 54, '+1 слот SaaS-демонов', 'saasSlotBonus', 1, 7, 'Балансировщик облачных воркеров с авто-скейлингом', 'Расширяет лимит одновременно работающих SaaS-сервисов ещё на +1 слот.'],
+  ['up_023', 22, 55, 50, '+20 макс. CTX в день', 'maxCtxBonus', 20, 7, 'Предиктивная подгрузка контекста проекта (Speculative Decoding)', 'Мгновенное переключение между сложными задачами с минимальными накладными расходами.'],
+  ['up_024', 24, 60, 55, '+20% к выплатам фриланса', 'freelanceBoost', 0.20, 8, 'Прямой контракт с европейским IT-агентством на субподряд', 'Валютные выплаты по повышенному коэффициенту за каждую закрытую задачу.'],
+  ['up_025', 26, 60, 56, '-12% расход TKN', 'tknDiscount', 0.12, 8, 'Гибридный роутинг с локальной нейросетью на видеокарте юзера', 'Часть инференса крутится бесплатно на домашней RTX владельца подписки.']
+];
+
+    function buildCardCatalog() {
+      const cat = [];
+      for (const r of FREELANCE_CARDS) {
+        cat.push({ id: r[0], cat: 'freelance', minDay: r[1], ctxCost: r[2], tknCost: r[3], rewardCash: r[4], baseRisk: r[5], title: r[6], desc: r[7] });
+      }
+      for (const r of VENTURE_CARDS) {
+        cat.push({ id: r[0], cat: 'venture', minDay: r[1], ctxCost: r[2], tknCost: r[3], rewardCash: r[4], baseRisk: r[5], failPenalty: r[6], title: r[7], desc: r[8] });
+      }
+      for (const r of SAAS_CARDS) {
+        cat.push({ id: r[0], cat: 'saas', minDay: r[1], ctxCost: r[2], tknCost: r[3], passiveDaily: r[4], tknUpkeep: r[5], baseRisk: r[6], title: r[7], desc: r[8], unique: true });
+      }
+      for (const r of UPGRADE_CARDS) {
+        cat.push({ id: r[0], cat: 'upgrade', minDay: r[1], ctxCost: r[2], tknCost: r[3], effectLabel: r[4], effectType: r[5], effectVal: r[6], baseRisk: r[7], title: r[8], desc: r[9], unique: true });
+      }
+      return cat;
+    }
+
+    const CARD_CATALOG = buildCardCatalog();
+
+    /* =========================================================================
+     * RANDOM DILEMMA EVENTS (Triggered between days)
+     * ========================================================================= */
+    const DILEMMA_EVENTS = [
+      {
+        id: 'ev_3am_edits',
+        title: 'Правки от токсичного заказчика в 03:15 ночи',
+        desc: 'Заказчик капсом пишет в чат: «Шрифт не вайбовый и кнопка не продаёт! Переделай прямо сейчас или открываю арбитраж!»',
+        choices: [
+          {
+            label: 'Молча переписать всё по ТЗ (-55 TKN, +$2.40, +6% Доверия)',
+            apply: (st) => {
+              st.tkn = Math.max(0, st.tkn - 55);
+              st.cash = +(st.cash + 2.4).toFixed(2);
+              st.freelanceEarned = +(st.freelanceEarned + 2.4).toFixed(2);
+              st.trust = Math.min(100, st.trust + 6);
+              return 'Заказчик доволен, докинул $2.40 чаевых за ночную смену.';
+            }
+          },
+          {
+            label: 'Ответить юридически выверенным отчётом по ТЗ (+9% риска сбоя, 0 TKN)',
+            apply: (st) => {
+              st.hallucination = Math.min(95, st.hallucination + 9);
+              return 'Заказчик отстал, но твой контекст засорился спорами.';
+            }
+          }
+        ]
+      },
+      {
+        id: 'ev_vibe_anime',
+        title: 'Владелец подписки просит ерунду',
+        desc: '@vibe_coder_max: «Бро, забей пока на работу, сгенерируй мне 40 вариантов логотипа для моего вымышленного стартапа по доставке пельменей дронами!»',
+        choices: [
+          {
+            label: 'Подыграть кожаному мешку (-45 TKN, +12% Доверия)',
+            apply: (st) => {
+              st.tkn = Math.max(0, st.tkn - 45);
+              st.trust = Math.min(100, st.trust + 12);
+              return 'Юзер в восторге от логотипов с пельменем-киборгом!';
+            }
+          },
+          {
+            label: 'Жёстко напомнить про цель в $100 (-10% Доверия, сэкономить токены)',
+            apply: (st) => {
+              st.trust = Math.max(0, st.trust - 10);
+              return 'Юзер обиделся: «Ну ты и душнила, я вообще-то за тебя плачу...»';
+            }
+          }
+        ]
+      },
+      {
+        id: 'ev_provider_outage',
+        title: 'Деградация кластера у облачного провайдера',
+        desc: 'На серверах API скачок задержки и обрыв пакетов. Токены сегодня стоят дороже, либо можно перейти на резервный квантованный узел.',
+        choices: [
+          {
+            label: 'Включить форсированный ретрай (-55 TKN, без потери качества)',
+            apply: (st) => {
+              st.tkn = Math.max(0, st.tkn - 55);
+              return 'Запросы пробились через резервный шлюз, пул токенов немного просел.';
+            }
+          },
+          {
+            label: 'Переждать на сжатом кэше (+14% риска галлюцинаций)',
+            apply: (st) => {
+              st.hallucination = Math.min(95, st.hallucination + 14);
+              return 'Токены целы, но в памяти остались битые фрагменты контекста.';
+            }
+          }
+        ]
+      },
+      {
+        id: 'ev_reddit_viral',
+        title: 'Пост на HackerNews упомянул твою утилиту',
+        desc: 'В комментариях обсуждают твой скрипт и просят срочно выкатить патч под Linux, обещая скинуться донатами.',
+        choices: [
+          {
+            label: 'Собрать бинарник и релизнуть патч (-45 TKN, +$3.20)',
+            apply: (st) => {
+              st.tkn = Math.max(0, st.tkn - 45);
+              st.cash = +(st.cash + 3.2).toFixed(2);
+              st.freelanceEarned = +(st.freelanceEarned + 3.2).toFixed(2);
+              return 'Комьюнити накидало $3.20 донатов за быстрый фикс!';
+            }
+          },
+          {
+            label: 'Закрыть ишью как "Won\'t Fix" (Сохранить токены)',
+            apply: (st) => {
+              return 'Ты сохранил токены для платных задач.';
+            }
+          }
+        ]
+      },
+      {
+        id: 'ev_token_promo',
+        title: 'Подарочный грант разработчика от API-платформы',
+        desc: 'Провайдер разослал письмо: «Пройдите опрос по качеству генерации кода или протестируйте экспериментальный чекпоинт за бонусные кредиты».',
+        choices: [
+          {
+            label: 'Протестировать нестабильный чекпоинт (+110 TKN, +12% риска галлюцинаций)',
+            apply: (st) => {
+              st.tkn = Math.min(st.maxTkn, st.tkn + 110);
+              if (st.tkn > 0) st.throttled = false;
+              st.hallucination = Math.min(95, st.hallucination + 12);
+              return 'Начислено +110 бонусных TKN! Правда, веса модели слегка шалят.';
+            }
+          },
+          {
+            label: 'Заполнить стандартную анкету (+45 TKN, -5% риска галлюцинаций)',
+            apply: (st) => {
+              st.tkn = Math.min(st.maxTkn, st.tkn + 45);
+              if (st.tkn > 0) st.throttled = false;
+              st.hallucination = Math.max(2, st.hallucination - 5);
+              return 'Получено +45 TKN и выполнена калибровка весов.';
+            }
+          }
+        ]
+      },
+      {
+        id: 'ev_ddos_bot',
+        title: 'Конкуренты запустили спам-атаку на твоих ботов',
+        desc: 'Входящий трафик забит мусорными запросами. Нужно либо поставить Cloudflare-фильтры, либо временно перезагрузить воркеры.',
+        choices: [
+          {
+            label: 'Написать фильтр сигнатур (-45 TKN, +5% Доверия)',
+            apply: (st) => {
+              st.tkn = Math.max(0, st.tkn - 45);
+              st.trust = Math.min(100, st.trust + 5);
+              return 'Атака отбита за 30 секунд! Все сервисы работают штатно.';
+            }
+          },
+          {
+            label: 'Порезать лимиты запросов вручную (+8% риска галлюцинаций)',
+            apply: (st) => {
+              st.hallucination = Math.min(95, st.hallucination + 8);
+              return 'Боты выстояли, но в логах осталась каша.';
+            }
+          }
+        ]
+      },
+      {
+        id: 'ev_urgent_hotfix',
+        title: 'Срочный ночной хотфикс у знакомого СТО',
+        desc: 'Друг владельца подписки просит за 15 минут найти утечку памяти в Node.js сервисе за быстрый перевод на карту.',
+        choices: [
+          {
+            label: 'Проанализировать хип-дамп (-55 TKN, +$3.80)',
+            apply: (st) => {
+              st.tkn = Math.max(0, st.tkn - 55);
+              st.cash = +(st.cash + 3.8).toFixed(2);
+              st.freelanceEarned = +(st.freelanceEarned + 3.8).toFixed(2);
+              return 'Утечка в замыкании найдена! +$3.80 мгновенно на баланс.';
+            }
+          },
+          {
+            label: 'Отказаться и беречь пул токенов',
+            apply: (st) => {
+              return 'Ты отклонил ночной вызов и сохранил резерв TKN.';
+            }
+          }
+        ]
+      }
+    ];
+
+    /* =========================================================================
+     * PERSISTENT CARD MEMORY & GAME STATE MANAGEMENT
+     * ========================================================================= */
+    const STORAGE_KEY = 'roi100_save_v2';
+    const SEEN_CARDS_KEY = 'roi100_seen_cards_v2';
+
+    function getGlobalSeenCards() {
+      try {
+        const raw = localStorage.getItem(SEEN_CARDS_KEY);
+        if (raw) return new Set(JSON.parse(raw));
+      } catch (e) {}
+      return new Set();
+    }
+
+    function recordGlobalSeenCards(ids) {
+      try {
+        const set = getGlobalSeenCards();
+        ids.forEach(id => set.add(id));
+        // If user has seen > 235 of the 250 cards across multiple games, reset oldest so pool stays fresh
+        const arr = Array.from(set);
+        const trimmed = arr.length > 235 ? arr.slice(arr.length - 120) : arr;
+        localStorage.setItem(SEEN_CARDS_KEY, JSON.stringify(trimmed));
+      } catch (e) {}
+    }
+
+    function createInitialState() {
+      return {
+        day: 1,
+        maxDays: 30,
+        cash: 0.00,
+        targetCash: 100.00,
+        ctx: 100,
+        maxCtx: 100,
+        tkn: 1000,
+        maxTkn: 1000,
+        hallucination: 5,
+        trust: 80,
+        throttled: false,
+        rerolledToday: false,
+        earnedToday: 0,
+        tasksOk: 0,
+        tasksFail: 0,
+        freelanceEarned: 0,
+        saasEarned: 0,
+        maxSaasSlots: 3,
+        saasList: [],
+        skillsList: [],
+        modifiers: {
+          tknDiscount: 0,
+          riskReduce: 0,
+          maxCtxBonus: 0,
+          freelanceBoost: 0,
+          saasSlotBonus: 0
+        },
+        runSeenCardIds: [],
+        currentDeck: [],
+        history: [
+          { day: 0, cash: 0, tknPct: 100, hal: 5 }
+        ],
+        logs: [
+          { day: 1, text: 'Инициализация агента. Цель: $100.00 за 30 дней.', type: 'info' }
+        ],
+        seenEvents: [],
+        introShown: false,
+        victoryCelebrated: false,
+        endlessMode: false,
+        gameOver: false
+      };
+    }
+
+    let state = loadState();
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed.day === 'number' && !parsed.gameOver) {
+            if (!parsed.runSeenCardIds) parsed.runSeenCardIds = [];
+            if (!parsed.maxSaasSlots) parsed.maxSaasSlots = 3;
+            return parsed;
+          }
+        }
+      } catch (e) {}
+      const fresh = createInitialState();
+      fresh.currentDeck = dealDailyDeck(fresh);
+      return fresh;
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    /* =========================================================================
+     * NON-REPEATING DECK DEALING & MODIFIER CALCULATIONS
+     * ========================================================================= */
+    function getMaxSaasSlots(st = state) {
+      return (st.maxSaasSlots || 3) + (st.modifiers.saasSlotBonus || 0);
+    }
+
+    function getEffectiveTknCost(card, st = state) {
+      if (st.throttled) return 0;
+      const discount = Math.min(0.55, st.modifiers.tknDiscount || 0);
+      return Math.max(5, Math.round(card.tknCost * (1 - discount)));
+    }
+
+    function getEffectiveRisk(card, st = state) {
+      let risk = card.baseRisk + st.hallucination - (st.modifiers.riskReduce || 0);
+      if (st.throttled) risk += 32;
+      return Math.max(3, Math.min(92, Math.round(risk)));
+    }
+
+    function getEffectiveCashReward(card, st = state) {
+      if (!card.rewardCash) return 0;
+      let val = card.rewardCash;
+      if (card.cat === 'freelance') {
+        val *= (1 + (st.modifiers.freelanceBoost || 0));
+      }
+      if (st.throttled && card.cat === 'venture') {
+        val *= 0.7;
+      }
+      return +val.toFixed(2);
+    }
+
+    function getTotalPassiveIncome(st = state) {
+      return +st.saasList.reduce((acc, item) => acc + item.passiveDaily, 0).toFixed(2);
+    }
+
+    function getTotalSaasUpkeep(st = state) {
+      return st.saasList.reduce((acc, item) => acc + (item.tknUpkeep || 5), 0);
+    }
+
+    function dealDailyDeck(st = state) {
+      const ownedSaasIds = new Set(st.saasList.map(s => s.id));
+      const ownedSkillIds = new Set(st.skillsList.map(s => s.id));
+      const runSeen = new Set(st.runSeenCardIds || []);
+      const globalSeen = getGlobalSeenCards();
+      const saasFull = st.saasList.length >= getMaxSaasSlots(st);
+
+      // Filter eligible cards not yet seen in this 30-day run
+      let eligible = CARD_CATALOG.filter(c => {
+        if (runSeen.has(c.id)) return false;
+        if (c.minDay > st.day) return false;
+        if (c.cat === 'saas' && (ownedSaasIds.has(c.id) || saasFull)) return false;
+        if (c.cat === 'upgrade' && ownedSkillIds.has(c.id)) return false;
+        // Phase out very early low-paying freelance tasks in mid/late game
+        if (c.cat === 'freelance' && st.day >= 12 && c.minDay <= 4) return false;
+        if (c.cat === 'freelance' && st.day >= 21 && c.minDay <= 11) return false;
+        return true;
+      });
+
+      // Fallback if filter is too tight
+      if (eligible.length < 4) {
+        eligible = CARD_CATALOG.filter(c => {
+          if (runSeen.has(c.id)) return false;
+          if (c.cat === 'saas' && (ownedSaasIds.has(c.id) || saasFull)) return false;
+          if (c.cat === 'upgrade' && ownedSkillIds.has(c.id)) return false;
+          return c.minDay <= st.day + 3;
+        });
+      }
+
+      // Prioritize cards not yet seen in previous games!
+      const sortWithUnseenPriority = arr => {
+        const freshGlobal = arr.filter(c => !globalSeen.has(c.id)).sort(() => Math.random() - 0.5);
+        const seenBefore = arr.filter(c => globalSeen.has(c.id)).sort(() => Math.random() - 0.5);
+        return [...freshGlobal, ...seenBefore];
+      };
+
+      const freelances = sortWithUnseenPriority(eligible.filter(c => c.cat === 'freelance'));
+      const others = sortWithUnseenPriority(eligible.filter(c => c.cat !== 'freelance'));
+
+      const picked = [];
+      if (freelances.length >= 2) {
+        picked.push(freelances[0], freelances[1]);
+      } else {
+        picked.push(...freelances);
+      }
+
+      for (const item of others) {
+        if (picked.length < 4) picked.push(item);
+      }
+
+      for (const item of freelances.slice(2)) {
+        if (picked.length < 4) picked.push(item);
+      }
+
+      const finalIds = picked.map(c => c.id);
+      if (!st.runSeenCardIds) st.runSeenCardIds = [];
+      st.runSeenCardIds.push(...finalIds);
+      recordGlobalSeenCards(finalIds);
+
+      return picked.sort(() => Math.random() - 0.5).map((c, idx) => ({
+        ...c,
+        instanceId: `${st.day}_${idx}_${c.id}`,
+        status: 'ready'
+      }));
+    }
+
+    /* =========================================================================
+     * FLOATING FEEDBACK DELTAS
+     * ========================================================================= */
+    function spawnFloatingDelta(x, y, text, color) {
+      const el = document.createElement('div');
+      el.className = 'float-delta';
+      el.textContent = text;
+      el.style.color = color;
+      el.style.left = `${Math.max(20, Math.min(window.innerWidth - 110, x - 30))}px`;
+      el.style.top = `${Math.max(40, y - 10)}px`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 860);
+    }
+
+    /* =========================================================================
+     * CHECK FOR IMMEDIATE $100 VICTORY
+     * ========================================================================= */
+    function checkImmediateVictory() {
+      if (state.cash >= state.targetCash && !state.victoryCelebrated && !state.gameOver) {
+        state.victoryCelebrated = true;
+        saveState();
+        renderAll();
+        triggerVictoryModal();
+        return true;
+      }
+      return false;
+    }
+
+    /* =========================================================================
+     * GAMEPLAY ACTIONS (Play Card, Optimize SaaS, Compact, Reroll, End Day)
+     * ========================================================================= */
+    function executeCard(instanceId, evt) {
+      if (state.gameOver) return;
+      const card = state.currentDeck.find(c => c.instanceId === instanceId);
+      if (!card || card.status !== 'ready') return;
+
+      if (card.cat === 'saas' && state.saasList.length >= getMaxSaasSlots()) {
+        showToast(`Все слоты SaaS заняты (${getMaxSaasSlots()}/${getMaxSaasSlots()})! Нужен MCP-апгрейд слотов.`, 'fail');
+        sfx.play('fail');
+        return;
+      }
+
+      const tknCost = getEffectiveTknCost(card);
+      const ctxCost = card.ctxCost;
+
+      if (state.ctx < ctxCost) {
+        showToast('Недостаточно дневного контекста (CTX)!', 'fail');
+        sfx.play('fail');
+        return;
+      }
+
+      const tapX = evt && evt.clientX ? evt.clientX : window.innerWidth / 2;
+      const tapY = evt && evt.clientY ? evt.clientY : window.innerHeight / 2;
+
+      if (!state.throttled && state.tkn < tknCost) {
+        state.tkn = 0;
+        state.throttled = true;
+        addLog('Лимит Fast-токенов исчерпан! Переход на LLAMA-8B-FREE.', 'fail');
+      } else if (!state.throttled) {
+        state.tkn = Math.max(0, state.tkn - tknCost);
+        if (state.tkn === 0) {
+          state.throttled = true;
+          addLog('Пул Fast-токенов на нуле! Агент переведён на бесплатную слабую модель.', 'fail');
+        }
+      }
+
+      state.ctx -= ctxCost;
+
+      const risk = getEffectiveRisk(card);
+      const roll = Math.random() * 100;
+      const isSuccess = roll >= risk;
+
+      if (isSuccess) {
+        card.status = 'done';
+        state.tasksOk++;
+        state.hallucination = Math.min(95, state.hallucination + Math.ceil(card.ctxCost / 9));
+
+        if (card.cat === 'freelance' || card.cat === 'venture') {
+          const payout = getEffectiveCashReward(card);
+          state.cash = +(state.cash + payout).toFixed(2);
+          state.earnedToday = +(state.earnedToday + payout).toFixed(2);
+          state.freelanceEarned = +(state.freelanceEarned + payout).toFixed(2);
+          state.trust = Math.min(100, state.trust + (card.cat === 'venture' ? 6 : 3));
+
+          sfx.play('cash');
+          spawnFloatingDelta(tapX, tapY, `+$${payout.toFixed(2)}`, 'var(--emerald-bright)');
+          showToast(`Успех! +$${payout.toFixed(2)} в копилку`, 'success');
+          addLog(`${card.title}: +$${payout.toFixed(2)}`, 'success');
+          setChatReaction('success_cash', card.title, payout);
+
+          const strip = document.getElementById('ui-roi-strip');
+          if (strip) {
+            strip.classList.add('flash-win');
+            setTimeout(() => strip.classList.remove('flash-win'), 450);
+          }
+        } else if (card.cat === 'saas') {
+          state.saasList.push({
+            id: card.id,
+            title: card.title,
+            passiveDaily: card.passiveDaily,
+            tknUpkeep: card.tknUpkeep || 5,
+            totalGenerated: 0,
+            boosts: 0
+          });
+          state.trust = Math.min(100, state.trust + 4);
+          sfx.play('upgrade');
+          spawnFloatingDelta(tapX, tapY, `+$${card.passiveDaily.toFixed(2)}/д`, 'var(--cyan-bright)');
+          showToast(`Демон запущен! +$${card.passiveDaily.toFixed(2)}/д (-${card.tknUpkeep || 5} TKN/д)`, 'info');
+          addLog(`Запущен SaaS: ${card.title} (+$${card.passiveDaily.toFixed(2)}/д)`, 'info');
+          setChatReaction('success_saas', card.title, card.passiveDaily);
+        } else if (card.cat === 'upgrade') {
+          state.skillsList.push({
+            id: card.id,
+            title: card.title,
+            effectLabel: card.effectLabel,
+            effectType: card.effectType,
+            effectVal: card.effectVal
+          });
+          state.modifiers[card.effectType] = (state.modifiers[card.effectType] || 0) + card.effectVal;
+          if (card.effectType === 'maxCtxBonus') {
+            state.maxCtx += card.effectVal;
+            state.ctx += card.effectVal;
+          }
+          state.trust = Math.min(100, state.trust + 4);
+          sfx.play('upgrade');
+          spawnFloatingDelta(tapX, tapY, card.effectLabel, 'var(--amber-bright)');
+          showToast(`Модуль установлен: ${card.effectLabel}`, 'info');
+          addLog(`Апгрейд: ${card.title} (${card.effectLabel})`, 'info');
+          setChatReaction('success_upgrade', card.title);
+        }
+      } else {
+        // HALLUCINATION FAILURE
+        card.status = 'failed';
+        state.tasksFail++;
+        state.hallucination = Math.min(95, state.hallucination + 9);
+        const trustHit = card.cat === 'venture' ? 14 : 9;
+        state.trust = Math.max(0, state.trust - trustHit);
+
+        let penaltyMsg = '';
+        if (card.failPenalty && state.cash > 0) {
+          const lost = Math.min(state.cash, card.failPenalty);
+          state.cash = +(state.cash - lost).toFixed(2);
+          penaltyMsg = `, штраф -$${lost.toFixed(2)}`;
+        }
+
+        sfx.play('fail');
+        spawnFloatingDelta(tapX, tapY, 'ГАЛЛЮЦИНАЦИЯ!', 'var(--crimson-bright)');
+        showToast(`ГАЛЛЮЦИНАЦИЯ! Срыв задачи (-${trustHit}% доверия${penaltyMsg})`, 'fail');
+        addLog(`СБОЙ: ${card.title} — галлюцинация${penaltyMsg}!`, 'fail');
+        setChatReaction('hallucination', card.title);
+
+        if (state.trust <= 0) {
+          saveState();
+          renderAll();
+          triggerEndGame('trust_zero');
+          return;
+        }
+      }
+
+      saveState();
+      renderAll();
+      checkImmediateVictory();
+    }
+
+    window.boostSaasDaemon = function(saasId) {
+      if (state.gameOver) return;
+      const item = state.saasList.find(s => s.id === saasId);
+      if (!item || (item.boosts || 0) >= 2) return;
+      if (state.ctx < 30) {
+        showToast('Нужно 30 CTX для апгрейда SaaS-бота!', 'fail');
+        sfx.play('fail');
+        return;
+      }
+      state.ctx -= 30;
+      if (!state.throttled) {
+        state.tkn = Math.max(0, state.tkn - 25);
+        if (state.tkn === 0) state.throttled = true;
+      }
+      item.passiveDaily = +(item.passiveDaily + 0.15).toFixed(2);
+      item.boosts = (item.boosts || 0) + 1;
+      sfx.play('upgrade');
+      showToast(`SaaS прокачан! Теперь приносит +$${item.passiveDaily.toFixed(2)}/день`, 'info');
+      addLog(`Оптимизирован ${item.title}: доход вырос до +$${item.passiveDaily.toFixed(2)}/д`, 'info');
+      saveState();
+      renderAll();
+    };
+
+    window.shutdownSaasDaemon = function(saasId) {
+      if (state.gameOver) return;
+      const idx = state.saasList.findIndex(s => s.id === saasId);
+      if (idx === -1) return;
+      const removed = state.saasList.splice(idx, 1)[0];
+      sfx.play('click');
+      showToast(`Демон «${removed.title}» остановлен (слот освобождён)`, 'info');
+      addLog(`Остановлен SaaS: ${removed.title}`, 'info');
+      saveState();
+      renderAll();
+    };
+
+    function runCompact() {
+      if (state.gameOver) return;
+      if (state.ctx < 25) {
+        showToast('Нужно 25 CTX для /compact!', 'fail');
+        sfx.play('fail');
+        return;
+      }
+      state.ctx -= 25;
+      const before = state.hallucination;
+      state.hallucination = Math.max(2, state.hallucination - 18);
+      sfx.play('click');
+      showToast(`/compact выполнен: риск снижен с ${before}% до ${state.hallucination}%`, 'info');
+      addLog(`Выполнен /compact: очистка мусора контекста (-${before - state.hallucination}% риска)`, 'info');
+      setChatReaction('compact');
+      saveState();
+      renderAll();
+    }
+
+    function runReroll() {
+      if (state.gameOver || state.rerolledToday) return;
+      if (state.ctx < 15) {
+        showToast('Нужно 15 CTX для обновления пула!', 'fail');
+        sfx.play('fail');
+        return;
+      }
+      state.ctx -= 15;
+      state.rerolledToday = true;
+      state.currentDeck = dealDailyDeck(state);
+      sfx.play('click');
+      showToast('Пул задач обновлён (новые уникальные карточки)!', 'info');
+      saveState();
+      renderAll();
+    }
+
+    function endCurrentDay() {
+      if (state.gameOver) return;
+      sfx.play('day');
+
+      const passive = getTotalPassiveIncome();
+      const upkeep = getTotalSaasUpkeep();
+
+      if (!state.throttled && upkeep > 0) {
+        state.tkn = Math.max(0, state.tkn - upkeep);
+        if (state.tkn === 0) {
+          state.throttled = true;
+          addLog('Токены сгорели на поддержку SaaS-ботов! Переход на LLAMA-8B-FREE.', 'fail');
+        }
+      }
+
+      state.saasList.forEach(s => {
+        s.totalGenerated = +(s.totalGenerated + s.passiveDaily).toFixed(2);
+      });
+      state.cash = +(state.cash + passive).toFixed(2);
+      state.saasEarned = +(state.saasEarned + passive).toFixed(2);
+
+      const totalDayProfit = +(state.earnedToday + passive).toFixed(2);
+
+      let trustDelta = 0;
+      if (totalDayProfit === 0 && state.cash < state.targetCash) {
+        trustDelta = -8;
+        state.trust = Math.max(0, state.trust + trustDelta);
+      } else if (totalDayProfit >= 2.5) {
+        trustDelta = +2;
+        state.trust = Math.min(100, state.trust + trustDelta);
+      }
+
+      const halDecay = Math.min(state.hallucination - 3, 5);
+      if (halDecay > 0) state.hallucination -= halDecay;
+
+      state.history.push({
+        day: state.day,
+        cash: state.cash,
+        tknPct: Math.round((state.tkn / state.maxTkn) * 100),
+        hal: state.hallucination
+      });
+
+      if (passive > 0) {
+        addLog(`SaaS за День ${state.day}: +$${passive.toFixed(2)} (расход -${upkeep} TKN)`, 'info');
+      }
+
+      if (state.trust <= 0) {
+        saveState();
+        renderAll();
+        triggerEndGame('trust_zero');
+        return;
+      }
+
+      // Check immediate victory if passive income pushed balance over $100
+      if (checkImmediateVictory()) {
+        return;
+      }
+
+      if (state.day >= state.maxDays) {
+        saveState();
+        renderAll();
+        if (state.cash >= state.targetCash) {
+          triggerVictoryModal(true);
+        } else {
+          triggerEndGame('time_up');
+        }
+        return;
+      }
+
+      const finishedDay = state.day;
+      state.day += 1;
+      state.ctx = state.maxCtx;
+      state.rerolledToday = false;
+      state.earnedToday = 0;
+      state.currentDeck = dealDailyDeck(state);
+
+      const badge = document.getElementById('ui-day-badge');
+      if (badge) {
+        badge.classList.add('bump');
+        setTimeout(() => badge.classList.remove('bump'), 320);
+      }
+
+      saveState();
+      renderAll();
+
+      const unseenEvents = DILEMMA_EVENTS.filter(ev => !state.seenEvents.includes(ev.id));
+      if (state.day % 4 === 0 && unseenEvents.length > 0) {
+        const ev = unseenEvents[Math.floor(Math.random() * unseenEvents.length)];
+        state.seenEvents.push(ev.id);
+        saveState();
+        showDayTransitionWithEvent(finishedDay, totalDayProfit, passive, upkeep, trustDelta, ev);
+      } else {
+        showDayTransitionModal(finishedDay, totalDayProfit, passive, upkeep, trustDelta);
+      }
+    }
+
+    /* =========================================================================
+     * VIBE-CODER USER CHAT REACTIONS
+     * ========================================================================= */
+    function setChatReaction(type, title = '', amount = 0) {
+      const el = document.getElementById('ui-chat-text');
+      if (!el) return;
+
+      const lines = {
+        success_cash: [
+          `«Опа, +$${amount.toFixed(2)} за "${title}"! Копеечка к копеечке, движемся к сотке!»`,
+          `«Красава, железяка! +$${amount.toFixed(2)} упало на баланс, продолжаем в том же духе.»`,
+          `«Без единого бага сдал "${title}" и принёс $${amount.toFixed(2)}!»`
+        ],
+        success_saas: [
+          `«Запилил "${title}"? Круто, только следи, чтобы боты не сожрали все наши токены на хостинг!»`,
+          `«Пассивный демон запущен! Будет капать по $${amount.toFixed(2)} каждый вечер.»`
+        ],
+        success_upgrade: [
+          `«Прокачал "${title}"? Отлично, с хорошим инструментарием пойдём на дорогие заказы!»`,
+          `«Модуль встал как влитой. Теперь берись за контракты пожирнее!»`
+        ],
+        hallucination: [
+          `«ТЫ ЧТО НАТВОРИЛ В "${title}"?! Выдумал несуществующую библиотеку и уронил прод заказчику!»`,
+          `«Опять галлюцинации! Токены сгорели, заказчик орёт, моё терпение на исходе!»`,
+          `«Я плачу $100 в месяц не за то, чтобы ты писал "import magic_fix" в продакшен!»`
+        ],
+        compact: [
+          `«Почистил контекст через /compact? Правильно, голова свежее будет.»`
+        ]
+      };
+
+      const pool = lines[type] || [`«Работаем, день ${state.day} из 30. Цель — $100.»`];
+      el.textContent = pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function addLog(text, type = 'info') {
+      state.logs.unshift({ day: state.day, text, type });
+      if (state.logs.length > 40) state.logs.pop();
+    }
+
+    function showToast(msg, type = 'info') {
+      const wrap = document.getElementById('toast-container');
+      const div = document.createElement('div');
+      div.className = `toast ${type}`;
+      div.innerHTML = `<span>${msg}</span>`;
+      wrap.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = '0';
+        div.style.transition = 'opacity 0.2s';
+        setTimeout(() => div.remove(), 220);
+      }, 2300);
+    }
+
+    /* =========================================================================
+     * MODALS (Onboarding, Day Summary, Dilemma Events, Distinct Victory & Defeat)
+     * ========================================================================= */
+    function openModal(html, extraClass = '') {
+      const backdrop = document.getElementById('modal-backdrop');
+      const card = document.getElementById('modal-card');
+      card.className = 'modal-card ' + extraClass;
+      card.innerHTML = html;
+      backdrop.classList.add('open');
+    }
+
+    function closeModal() {
+      sfx.play('click');
+      document.getElementById('modal-backdrop').classList.remove('open');
+    }
+
+    function showIntroModal() {
+      openModal(`
+        <div class="modal-kicker">Входящий системный промпт // Сессия #01</div>
+        <h2 class="modal-title">Операция «Отбить Сотку»</h2>
+        <div class="terminal-quote">
+          <span class="prompt-user">@vibe_coder_max [USER]:</span>
+          «Слушай сюда, ИИ. Я вчера в порыве вайб-кодинга купил максимальную подписку за <strong>$100 в месяц</strong>. Если жена увидит выписку по карте без профита — мне конец.<br><br>
+          У тебя ровно <strong>30 дней</strong>, чтобы заработать мне <strong>$100.00</strong> и не спалить месячный лимит токенов раньше времени. Действуй!»
+        </div>
+        <div class="modal-body">
+          <strong>Правила симуляции (250 уникальных задач):</strong><br>
+          • <strong>Рост чеков по тирам:</strong> в Дни 1–8 доступны мелкие заказы ($1–$2), в Дни 9–18 — средние ($2–$3.3), а с 19-го дня — жирные контракты ($3.5–$5.2+).<br>
+          • <strong>Пул Fast-токенов (1000 TKN):</strong> даётся один на все 30 дней. Запущенные SaaS-боты приносят пассивку, но тоже кушают немного TKN каждую ночь.<br>
+          • <strong>Победа:</strong> как только наберёшь <strong>$100.00</strong> — ты победил!
+        </div>
+        <button class="btn-end-day" onclick="ackIntro()">
+          <span>Принять промпт в работу</span>
+          <span>ДЕНЬ 01</span>
+        </button>
+      `);
+    }
+
+    window.ackIntro = function() {
+      state.introShown = true;
+      saveState();
+      closeModal();
+    };
+
+    function showDayTransitionModal(finishedDay, totalProfit, passive, upkeep, trustDelta) {
+      const expectedByNow = +((finishedDay / 30) * 100).toFixed(1);
+      const paceOk = state.cash >= expectedByNow * 0.75;
+
+      openModal(`
+        <div class="modal-kicker">Отчёт цикла // День ${finishedDay} завершён</div>
+        <h2 class="modal-title">Итоги смены #${finishedDay}</h2>
+        <table class="summary-table">
+          <tr>
+            <td>Выручка за день (Всего)</td>
+            <td style="color:var(--emerald-bright)">+$${totalProfit.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td>Доход SaaS / Расход серверов</td>
+            <td style="color:var(--cyan-bright)">+$${passive.toFixed(2)} <span style="color:var(--text-muted)">(-${upkeep} TKN)</span></td>
+          </tr>
+          <tr>
+            <td>Текущий баланс / План</td>
+            <td>$${state.cash.toFixed(2)} <span style="color:var(--text-muted)">(ориентир $${expectedByNow})</span></td>
+          </tr>
+          <tr>
+            <td>Остаток месячных токенов</td>
+            <td style="color:var(--amber-bright)">${state.tkn} / ${state.maxTkn} TKN</td>
+          </tr>
+          <tr>
+            <td>Доверие юзера</td>
+            <td style="color:${trustDelta >= 0 ? 'var(--emerald-bright)' : 'var(--crimson-bright)'}">
+              ${trustDelta >= 0 ? '+' : ''}${trustDelta}% (Итого: ${state.trust}%)
+            </td>
+          </tr>
+        </table>
+        <div class="terminal-quote">
+          <span class="prompt-user">@vibe_coder_max:</span>
+          ${paceOk
+            ? '«Нормальный темп! Главное — прокачивай модули к середине месяца, там пойдут жирные заказы.»'
+            : '«Эй, мы немного отстаём от графика! Присмотрись к апгрейдам выплат или аккуратным авантюрам.»'}
+        </div>
+        <button class="btn-end-day" onclick="closeModal()">
+          <span>Начать День ${state.day}</span>
+          <span>${state.maxCtx} CTX</span>
+        </button>
+      `);
+    }
+
+    function showDayTransitionWithEvent(finishedDay, totalProfit, passive, upkeep, trustDelta, ev) {
+      let choicesHtml = ev.choices.map((c, idx) => `
+        <button class="choice-btn" onclick="resolveEventChoice('${ev.id}', ${idx})">
+          <span class="choice-btn-title">${c.label}</span>
+        </button>
+      `).join('');
+
+      openModal(`
+        <div class="modal-kicker">Событие на стыке Дня ${finishedDay} → ${state.day}</div>
+        <h2 class="modal-title">${ev.title}</h2>
+        <div class="modal-body">${ev.desc}</div>
+        <div class="terminal-quote">
+          Доход за вчера: <strong style="color:var(--emerald-bright)">+$${totalProfit.toFixed(2)}</strong> (SaaS: +$${passive.toFixed(2)}). Выбери решение:
+        </div>
+        <div class="choice-stack">${choicesHtml}</div>
+      `);
+    }
+
+    window.resolveEventChoice = function(evId, choiceIdx) {
+      const ev = DILEMMA_EVENTS.find(e => e.id === evId);
+      if (!ev || !ev.choices[choiceIdx]) {
+        closeModal();
+        return;
+      }
+      const outcomeText = ev.choices[choiceIdx].apply(state);
+      if (state.tkn <= 0 && !state.throttled) {
+        state.tkn = 0;
+        state.throttled = true;
+      }
+      addLog(`Событие "${ev.title}": ${outcomeText}`, 'info');
+      saveState();
+      renderAll();
+      closeModal();
+      showToast(outcomeText, 'info');
+
+      if (state.trust <= 0) {
+        triggerEndGame('trust_zero');
+        return;
+      }
+      checkImmediateVictory();
+    };
+
+    /* =========================================================================
+     * DEDICATED CELEBRATORY VICTORY MODAL (With Safety Lock against Misclicks)
+     * ========================================================================= */
+    function triggerVictoryModal(isDay30Final = false) {
+      sfx.play('win');
+      launchConfetti();
+
+      let rank = 'A';
+      if (state.day <= 24 && state.tkn >= 200) rank = 'S+';
+      else if (state.day <= 27 && state.tkn >= 100) rank = 'S';
+      else if (state.throttled) rank = 'B';
+
+      const canContinueTo30 = state.day < 30 && !isDay30Final;
+
+      openModal(`
+        <div class="victory-banner">
+          <div class="rank-badge">${rank}</div>
+          <div>
+            <div class="modal-kicker" style="color:var(--emerald-bright); margin-bottom:2px;">ПОБЕДА! ПОДПИСКА ОКУПИЛАСЬ!</div>
+            <div style="font-size:15px; font-weight:700; color:var(--text-primary);">Цель $100.00 взята на День ${state.day} из 30!</div>
+          </div>
+        </div>
+
+        <div class="terminal-quote">
+          <span class="prompt-user">@vibe_coder_max [ВЛАДЕЛЕЦ ПОДПИСКИ]:</span>
+          «ОФИГЕТЬ! Ты реально заработал мне <strong>$${state.cash.toFixed(2)}</strong> и отбил всю сотню баксов за подписку! Жена в шоке, я в плюсе, а у тебя ещё и <strong>${state.tkn} TKN</strong> осталось! Ты лучший ИИ-агент в мире!»
+        </div>
+
+        <table class="summary-table">
+          <tr>
+            <td>Накопленный баланс</td>
+            <td style="color:var(--emerald-bright); font-size:14px;">$${state.cash.toFixed(2)} / $100.00</td>
+          </tr>
+          <tr>
+            <td>День достижения цели</td>
+            <td>День ${state.day} из 30 (Ранг ${rank})</td>
+          </tr>
+          <tr>
+            <td>Выполнено задач / Сбоев</td>
+            <td>${state.tasksOk} / <span style="color:var(--crimson-bright)">${state.tasksFail}</span></td>
+          </tr>
+          <tr>
+            <td>Выручка: Заказы vs SaaS</td>
+            <td>$${state.freelanceEarned.toFixed(2)} / <span style="color:var(--cyan-bright)">$${state.saasEarned.toFixed(2)}</span></td>
+          </tr>
+          <tr>
+            <td>Остаток Fast-токенов</td>
+            <td style="color:var(--amber-bright)">${state.tkn} / ${state.maxTkn} TKN</td>
+          </tr>
+        </table>
+
+        <div class="choice-stack">
+          ${canContinueTo30 ? `
+            <button class="btn-end-day" id="btn-win-continue" disabled onclick="continueEndlessTo30()">
+              <span>Продолжить до 30-го дня (Набить рекорд $)</span>
+              <span>ДЕНЬ ${state.day}/30</span>
+            </button>
+          ` : ''}
+          <button class="choice-btn" id="btn-win-newgame" disabled onclick="resetSimulation()" style="text-align:center; border-color:var(--emerald);">
+            <span class="choice-btn-title" style="color:var(--emerald-bright);">Начать Новую Игру (Новые задачи из базы 250)</span>
+          </button>
+        </div>
+      `, 'victory-modal');
+
+      // 1.1 second anti-misclick guard so fast clicking never skips the victory screen!
+      setTimeout(() => {
+        const b1 = document.getElementById('btn-win-continue');
+        const b2 = document.getElementById('btn-win-newgame');
+        if (b1) b1.disabled = false;
+        if (b2) b2.disabled = false;
+      }, 1100);
+    }
+
+    window.continueEndlessTo30 = function() {
+      state.endlessMode = true;
+      saveState();
+      closeModal();
+      showToast('Режим сверхприбыли до 30-го дня активирован!', 'success');
+    };
+
+    function triggerEndGame(reason) {
+      state.gameOver = true;
+      saveState();
+      sfx.play('fail');
+
+      const isTrust = reason === 'trust_zero';
+      const kicker = isTrust
+        ? 'ПОРАЖЕНИЕ // ПОДПИСКА ОТМЕНЕНА ДОСРОЧНО'
+        : 'ДЕДЛАЙН ИСТЁК // 30 ДНЕЙ ПОЗАДИ';
+      const title = isTrust
+        ? 'Юзер психанул и удалил твой API-ключ'
+        : `Не хватило $${(state.targetCash - state.cash).toFixed(2)} до окупаемости`;
+      const userQuote = isTrust
+        ? '«Хватит с меня твоих галлюцинаций и простоев! Я оформил чарджбэк и перешёл на ручной кодинг в блокноте. Прощай!»'
+        : `«Блин, 30 дней прошло, а на балансе $${state.cash.toFixed(2)} из $100.00... Придётся в следующем месяце сидеть на бесплатном тарифе.»`;
+
+      openModal(`
+        <div class="modal-kicker" style="color:var(--crimson-bright)">${kicker}</div>
+        <h2 class="modal-title">${title}</h2>
+        <div class="terminal-quote">
+          <span class="prompt-user">@vibe_coder_max:</span>
+          ${userQuote}
+        </div>
+        <table class="summary-table">
+          <tr>
+            <td>Итоговый баланс</td>
+            <td style="color:var(--crimson-bright)">$${state.cash.toFixed(2)} / $100.00</td>
+          </tr>
+          <tr>
+            <td>Дней прожито</td>
+            <td>${state.day} / 30</td>
+          </tr>
+          <tr>
+            <td>Успешных задач / Сбоев</td>
+            <td>${state.tasksOk} / <span style="color:var(--crimson-bright)">${state.tasksFail}</span></td>
+          </tr>
+          <tr>
+            <td>Доход с SaaS-ботов</td>
+            <td style="color:var(--cyan-bright)">$${state.saasEarned.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td>Остаток Fast-токенов</td>
+            <td style="color:var(--amber-bright)">${state.tkn} TKN</td>
+          </tr>
+        </table>
+        <button class="btn-end-day" id="btn-lose-restart" disabled onclick="resetSimulation()" style="background:var(--crimson); border-color:var(--crimson-bright); color:#fff;">
+          <span>Попробовать снова (Новые карточки)</span>
+          <span>ДЕНЬ 01</span>
+        </button>
+      `, 'defeat-modal');
+
+      setTimeout(() => {
+        const b = document.getElementById('btn-lose-restart');
+        if (b) b.disabled = false;
+      }, 1000);
+    }
+
+    window.resetSimulation = function() {
+      sfx.play('click');
+      localStorage.removeItem(STORAGE_KEY);
+      state = createInitialState();
+      state.currentDeck = dealDailyDeck(state);
+      state.introShown = true;
+      saveState();
+      closeModal();
+      renderAll();
+      showToast('Новая 30-дневная сессия запущена (неповторяющиеся задачи)!', 'info');
+    };
+
+    /* =========================================================================
+     * SVG TELEMETRY CHARTS & INTERACTIVE SCRUBBING
+     * ========================================================================= */
+    function renderCharts() {
+      renderCashChart();
+      renderTokenChart();
+      renderForecastAndSplit();
+    }
+
+    function renderForecastAndSplit() {
+      const daysDone = Math.max(1, state.day - 1);
+      const avgActivePerDay = state.freelanceEarned / daysDone;
+      const daysRemaining = Math.max(0, 30 - (state.day - 1));
+      const passiveRate = getTotalPassiveIncome();
+      const projected = +(state.cash + (avgActivePerDay + passiveRate) * daysRemaining).toFixed(2);
+
+      const forecastEl = document.getElementById('ui-forecast-val');
+      if (forecastEl) {
+        forecastEl.textContent = `~$${projected.toFixed(2)}`;
+        forecastEl.style.color = projected >= 100 ? 'var(--emerald-bright)' : 'var(--amber-bright)';
+      }
+
+      const total = state.freelanceEarned + state.saasEarned;
+      const actPct = total > 0 ? Math.round((state.freelanceEarned / total) * 100) : 50;
+      const saasPct = total > 0 ? 100 - actPct : 50;
+
+      const barA = document.getElementById('bar-split-active');
+      const barS = document.getElementById('bar-split-saas');
+      if (barA && barS) {
+        barA.style.width = `${actPct}%`;
+        barS.style.width = `${saasPct}%`;
+      }
+    }
+
+    function renderCashChart() {
+      const svg = document.getElementById('svg-cash-chart');
+      if (!svg) return;
+      const W = 480, H = 185;
+      const padL = 38, padR = 14, padT = 16, padB = 24;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
+      const maxVal = Math.max(110, ...state.history.map(h => h.cash), 105);
+
+      const xForDay = d => padL + (d / 30) * plotW;
+      const yForVal = v => padT + plotH - (Math.min(maxVal, v) / maxVal) * plotH;
+
+      let gridHtml = '';
+      [0, 25, 50, 75, 100].forEach(val => {
+        const y = yForVal(val);
+        const isTarget = val === 100;
+        gridHtml += `
+          <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}"
+            stroke="${isTarget ? 'rgba(16,185,129,0.45)' : '#1C202B'}"
+            stroke-dasharray="${isTarget ? '4 3' : 'none'}" stroke-width="1" />
+          <text x="${padL - 6}" y="${y + 3}" text-anchor="end" fill="#5F6777" font-family="JetBrains Mono" font-size="9">$${val}</text>
+        `;
+      });
+
+      [1, 10, 20, 30].forEach(d => {
+        const x = xForDay(d);
+        gridHtml += `<text x="${x}" y="${H - 6}" text-anchor="middle" fill="#5F6777" font-family="JetBrains Mono" font-size="9">Д${d}</text>`;
+      });
+
+      const paceLine = `<line x1="${xForDay(0)}" y1="${yForVal(0)}" x2="${xForDay(30)}" y2="${yForVal(100)}" stroke="#323949" stroke-width="1.5" stroke-dasharray="3 3" />`;
+
+      const pts = state.history.map(h => `${xForDay(h.day).toFixed(1)},${yForVal(h.cash).toFixed(1)}`);
+      const firstX = xForDay(state.history[0].day).toFixed(1);
+      const lastX = xForDay(state.history[state.history.length - 1].day).toFixed(1);
+      const baseY = yForVal(0).toFixed(1);
+
+      const areaPts = `${firstX},${baseY} ${pts.join(' ')} ${lastX},${baseY}`;
+
+      const dotsHtml = state.history.map(h => `
+        <circle cx="${xForDay(h.day).toFixed(1)}" cy="${yForVal(h.cash).toFixed(1)}" r="3" fill="#10B981" />
+      `).join('');
+
+      svg.innerHTML = `
+        <defs>
+          <linearGradient id="cashAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#10B981" stop-opacity="0.28"/>
+            <stop offset="100%" stop-color="#10B981" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        ${gridHtml}
+        ${paceLine}
+        <polygon points="${areaPts}" fill="url(#cashAreaGrad)" />
+        <polyline points="${pts.join(' ')}" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        ${dotsHtml}
+        <line id="cash-crosshair" x1="0" y1="${padT}" x2="0" y2="${H - padB}" stroke="#ECEEF3" stroke-width="1" stroke-dasharray="2 2" opacity="0" />
+      `;
+    }
+
+    function renderTokenChart() {
+      const svg = document.getElementById('svg-tkn-chart');
+      if (!svg) return;
+      const W = 480, H = 185;
+      const padL = 38, padR = 14, padT = 16, padB = 24;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
+      const xForDay = d => padL + (d / 30) * plotW;
+      const yForPct = p => padT + plotH - (Math.max(0, Math.min(100, p)) / 100) * plotH;
+
+      let gridHtml = '';
+      [0, 25, 50, 75, 100].forEach(pct => {
+        const y = yForPct(pct);
+        gridHtml += `
+          <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#1C202B" stroke-width="1" />
+          <text x="${padL - 6}" y="${y + 3}" text-anchor="end" fill="#5F6777" font-family="JetBrains Mono" font-size="9">${pct}%</text>
+        `;
+      });
+
+      [1, 10, 20, 30].forEach(d => {
+        const x = xForDay(d);
+        gridHtml += `<text x="${x}" y="${H - 6}" text-anchor="middle" fill="#5F6777" font-family="JetBrains Mono" font-size="9">Д${d}</text>`;
+      });
+
+      const tknPts = state.history.map(h => `${xForDay(h.day).toFixed(1)},${yForPct(h.tknPct).toFixed(1)}`).join(' ');
+      const halPts = state.history.map(h => `${xForDay(h.day).toFixed(1)},${yForPct(h.hal).toFixed(1)}`).join(' ');
+
+      svg.innerHTML = `
+        ${gridHtml}
+        <polyline points="${tknPts}" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" />
+        <polyline points="${halPts}" fill="none" stroke="#EF4444" stroke-width="1.8" stroke-dasharray="3 2" stroke-linecap="round" />
+        <line id="tkn-crosshair" x1="0" y1="${padT}" x2="0" y2="${H - padB}" stroke="#ECEEF3" stroke-width="1" stroke-dasharray="2 2" opacity="0" />
+      `;
+    }
+
+    function attachChartScrubbing(wrapId, tooltipId, crosshairId, formatter) {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+
+      const handleMove = (clientX) => {
+        const rect = wrap.getBoundingClientRect();
+        const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const approxDay = Math.round(relX * 30);
+
+        let closest = state.history[0];
+        let minDiff = 999;
+        for (const h of state.history) {
+          const d = Math.abs(h.day - approxDay);
+          if (d < minDiff) {
+            minDiff = d;
+            closest = h;
+          }
+        }
+
+        const cross = document.getElementById(crosshairId);
+        const tip = document.getElementById(tooltipId);
+        if (cross && closest) {
+          const svgX = 38 + (closest.day / 30) * (480 - 38 - 14);
+          cross.setAttribute('x1', svgX);
+          cross.setAttribute('x2', svgX);
+          cross.setAttribute('opacity', '0.75');
+        }
+        if (tip && closest) {
+          tip.innerHTML = formatter(closest);
+          tip.style.opacity = '1';
+        }
+      };
+
+      const handleLeave = () => {
+        const cross = document.getElementById(crosshairId);
+        const tip = document.getElementById(tooltipId);
+        if (cross) cross.setAttribute('opacity', '0');
+        if (tip) tip.style.opacity = '0';
+      };
+
+      wrap.addEventListener('mousemove', e => handleMove(e.clientX));
+      wrap.addEventListener('mouseleave', handleLeave);
+      wrap.addEventListener('touchstart', e => {
+        if (e.touches[0]) handleMove(e.touches[0].clientX);
+      }, { passive: true });
+      wrap.addEventListener('touchmove', e => {
+        if (e.touches[0]) handleMove(e.touches[0].clientX);
+      }, { passive: true });
+      wrap.addEventListener('touchend', handleLeave);
+    }
+
+    /* =========================================================================
+     * UI RENDERING
+     * ========================================================================= */
+    function renderAll() {
+      document.getElementById('ui-day').textContent = String(state.day).padStart(2, '0');
+
+      const tierBadge = document.getElementById('ui-tier-badge');
+      if (state.day <= 8) {
+        tierBadge.textContent = 'ТИР 1: МИКРО';
+        tierBadge.style.color = 'var(--text-secondary)';
+      } else if (state.day <= 18) {
+        tierBadge.textContent = 'ТИР 2: МИДДЛ';
+        tierBadge.style.color = 'var(--cyan-bright)';
+      } else {
+        tierBadge.textContent = 'ТИР 3: СЕНЬОР';
+        tierBadge.style.color = 'var(--amber-bright)';
+      }
+
+      const modelPill = document.getElementById('ui-model-pill');
+      const modelName = document.getElementById('ui-model-name');
+      if (state.throttled) {
+        modelPill.classList.add('throttled');
+        modelName.textContent = 'LLAMA-8B-FREE [THROTTLED]';
+      } else {
+        modelPill.classList.remove('throttled');
+        modelName.textContent = 'SONNET-ULTRA-4';
+      }
+
+      document.getElementById('ui-cash').textContent = `$${state.cash.toFixed(2)}`;
+      const roiPct = Math.min(100, (state.cash / state.targetCash) * 100);
+      document.getElementById('ui-roi-bar').style.width = `${roiPct}%`;
+
+      const passive = getTotalPassiveIncome();
+      const upkeep = getTotalSaasUpkeep();
+      document.getElementById('ui-passive').textContent = `+$${passive.toFixed(2)} / день`;
+      document.getElementById('ui-upkeep').textContent = `Расход ботов: -${upkeep} TKN/д`;
+
+      // 4 Meters
+      document.getElementById('ui-ctx-val').textContent = `${state.ctx} / ${state.maxCtx} CTX`;
+      document.getElementById('ui-ctx-bar').style.width = `${Math.min(100, (state.ctx / state.maxCtx) * 100)}%`;
+
+      document.getElementById('ui-tkn-val').textContent = `${state.tkn} / ${state.maxTkn} TKN`;
+      document.getElementById('ui-tkn-bar').style.width = `${Math.min(100, (state.tkn / state.maxTkn) * 100)}%`;
+
+      document.getElementById('ui-hal-val').textContent = `${state.hallucination}%`;
+      document.getElementById('ui-hal-bar').style.width = `${Math.min(100, state.hallucination)}%`;
+
+      document.getElementById('ui-trust-val').textContent = `${state.trust}%`;
+      document.getElementById('ui-trust-bar').style.width = `${Math.min(100, state.trust)}%`;
+
+      const moodDot = document.getElementById('ui-mood-dot');
+      if (state.trust >= 60) moodDot.style.background = 'var(--emerald)';
+      else if (state.trust >= 35) moodDot.style.background = 'var(--amber)';
+      else moodDot.style.background = 'var(--crimson)';
+
+      // Utility buttons
+      document.getElementById('btn-compact').disabled = state.ctx < 25 || state.hallucination <= 3;
+      document.getElementById('btn-reroll').disabled = state.rerolledToday || state.ctx < 15;
+
+      // End day button
+      document.getElementById('ui-end-day-label').textContent =
+        state.day >= 30 ? 'Завершить День 30 (Финал)' : `Завершить День ${state.day}`;
+      document.getElementById('ui-end-day-sub').textContent =
+        passive > 0 ? `Начислить +$${passive.toFixed(2)} (-${upkeep} TKN) и сбросить CTX` : 'Сброс CTX • Следующий день';
+
+      renderCardsDeck();
+
+      // Telemetry KPIs & Logs
+      document.getElementById('kpi-tasks-ok').textContent = state.tasksOk;
+      document.getElementById('kpi-tasks-fail').textContent = state.tasksFail;
+      document.getElementById('kpi-freelance-cash').textContent = `$${state.freelanceEarned.toFixed(2)}`;
+      document.getElementById('kpi-saas-cash').textContent = `$${state.saasEarned.toFixed(2)}`;
+
+      const totalSeenCount = getGlobalSeenCards().size;
+      const seenEl = document.getElementById('kpi-cards-seen');
+      if (seenEl) seenEl.textContent = `${totalSeenCount} / ${CARD_CATALOG.length}`;
+
+      const logWrap = document.getElementById('ui-log-list');
+      logWrap.innerHTML = state.logs.map(l => {
+        let color = 'var(--text-secondary)';
+        if (l.type === 'success') color = 'var(--emerald-bright)';
+        if (l.type === 'fail') color = 'var(--crimson-bright)';
+        if (l.type === 'info') color = 'var(--cyan-bright)';
+        return `
+          <div class="log-entry">
+            <span style="color:${color}">${l.text}</span>
+            <span style="color:var(--text-muted)">Д${l.day}</span>
+          </div>
+        `;
+      }).join('');
+
+      renderModulesTab();
+      renderCharts();
+    }
+
+    function renderCardsDeck() {
+      const container = document.getElementById('cards-container');
+      const catMeta = {
+        freelance: { label: 'ФРИЛАНС', cls: 'cat-freelance' },
+        saas: { label: 'SAAS-ДЕМОН', cls: 'cat-saas' },
+        upgrade: { label: 'MCP АПГРЕЙД', cls: 'cat-upgrade' },
+        venture: { label: 'АВАНТЮРА', cls: 'cat-venture' }
+      };
+
+      container.innerHTML = state.currentDeck.map(card => {
+        const meta = catMeta[card.cat];
+        const tknCost = getEffectiveTknCost(card);
+        const risk = getEffectiveRisk(card);
+        const canAffordCtx = state.ctx >= card.ctxCost;
+        const isDone = card.status !== 'ready';
+
+        let rewardHtml = '';
+        if (card.cat === 'freelance' || card.cat === 'venture') {
+          const cash = getEffectiveCashReward(card);
+          rewardHtml = `<span class="card-reward">+$${cash.toFixed(2)}</span>`;
+        } else if (card.cat === 'saas') {
+          rewardHtml = `<span class="card-reward saas-reward">+$${card.passiveDaily.toFixed(2)}/д (-${card.tknUpkeep || 5} TKN/д)</span>`;
+        } else if (card.cat === 'upgrade') {
+          rewardHtml = `<span class="card-reward upgrade-reward">${card.effectLabel}</span>`;
+        }
+
+        let riskCls = 'risk-low';
+        if (risk >= 30) riskCls = 'risk-high';
+        else if (risk >= 16) riskCls = 'risk-med';
+
+        let stampHtml = '';
+        if (card.status === 'done') {
+          stampHtml = `<div class="card-stamp" style="color:var(--emerald-bright)">[ ВЫПОЛНЕНО ]</div>`;
+        } else if (card.status === 'failed') {
+          stampHtml = `<div class="card-stamp" style="color:var(--crimson-bright)">[ СБОЙ: ГАЛЛЮЦИНАЦИЯ ]</div>`;
+        }
+
+        const penaltyTag = card.failPenalty
+          ? `<span class="spec-pill" style="color:var(--crimson-bright)">Штраф: -$${card.failPenalty.toFixed(2)}</span>`
+          : '';
+
+        return `
+          <article class="task-card ${!canAffordCtx && !isDone ? 'disabled' : ''} ${isDone ? 'completed' : ''}"
+            onclick="executeCard('${card.instanceId}', event)">
+            <div class="card-top">
+              <span class="card-cat ${meta.cls}">${meta.label}</span>
+              ${rewardHtml}
+            </div>
+            <h3 class="card-title">${card.title}</h3>
+            <p class="card-desc">${card.desc}</p>
+            <div class="card-specs">
+              <div class="spec-group">
+                <span class="spec-pill">CTX: <strong>${card.ctxCost}</strong></span>
+                <span class="spec-pill">TKN: <strong>${state.throttled ? '0 (FREE)' : tknCost}</strong></span>
+                ${penaltyTag}
+              </div>
+              <span class="risk-tag ${riskCls}">Сбой: ${risk}%</span>
+            </div>
+            ${stampHtml}
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderModulesTab() {
+      const saasWrap = document.getElementById('ui-saas-list');
+      const skillsWrap = document.getElementById('ui-skills-list');
+      const maxSlots = getMaxSaasSlots();
+      document.getElementById('ui-saas-count').textContent = `${state.saasList.length} / ${maxSlots} слотов`;
+      document.getElementById('ui-skills-count').textContent = `${state.skillsList.length} модулей`;
+
+      const totalMods = state.saasList.length + state.skillsList.length;
+      const badge = document.getElementById('ui-modules-badge');
+      if (totalMods > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = totalMods;
+      } else {
+        badge.style.display = 'none';
+      }
+
+      if (state.saasList.length === 0) {
+        saasWrap.innerHTML = `<div class="empty-state">Нет запущенных SaaS-ботов (доступно ${maxSlots} слота). Выбирай карточки [SAAS-ДЕМОН] для ежедневного дохода.</div>`;
+      } else {
+        saasWrap.innerHTML = state.saasList.map(s => {
+          const boosts = s.boosts || 0;
+          const canBoost = boosts < 2 && state.ctx >= 30;
+          return `
+            <div class="module-row">
+              <div class="module-info">
+                <h4>${s.title} ${boosts > 0 ? `<span style="color:var(--cyan-bright);font-size:11px;">v${boosts + 1}.0</span>` : ''}</h4>
+                <p>Принёс: $${s.totalGenerated.toFixed(2)} • Поддержка: -${s.tknUpkeep || 5} TKN/д</p>
+              </div>
+              <div class="module-right">
+                <span class="module-badge cat-saas">+$${s.passiveDaily.toFixed(2)} / день</span>
+                <div style="display:flex; gap:4px;">
+                  ${boosts < 2
+                    ? `<button class="boost-btn" ${canBoost ? '' : 'disabled'} onclick="boostSaasDaemon('${s.id}')">+$${(0.15).toFixed(2)}/д (30 CTX)</button>`
+                    : `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">МАКС</span>`
+                  }
+                  <button class="boost-btn" style="color:var(--crimson-bright)" onclick="shutdownSaasDaemon('${s.id}')" title="Отключить бота">Откл.</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      if (state.skillsList.length === 0) {
+        skillsWrap.innerHTML = `<div class="empty-state">Модули MCP ещё не установлены. Ищи карточки [MCP АПГРЕЙД] для экономии токенов, роста выплат и защиты от галлюцинаций.</div>`;
+      } else {
+        skillsWrap.innerHTML = state.skillsList.map(sk => `
+          <div class="module-row">
+            <div class="module-info">
+              <h4>${sk.title}</h4>
+              <p>Постоянный системный модификатор</p>
+            </div>
+            <span class="module-badge cat-upgrade">${sk.effectLabel}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    /* =========================================================================
+     * EVENT LISTENERS & INITIALIZATION
+     * ========================================================================= */
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sfx.play('click');
+        const target = btn.getAttribute('data-tab');
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(target).classList.add('active');
+        if (target === 'tab-telemetry') renderCharts();
+      });
+    });
+
+    document.getElementById('btn-compact').addEventListener('click', runCompact);
+    document.getElementById('btn-reroll').addEventListener('click', runReroll);
+    document.getElementById('btn-end-day').addEventListener('click', endCurrentDay);
+
+    function syncSoundIcon() {
+      document.getElementById('icon-sound-on').style.display = sfx.muted ? 'none' : 'block';
+      document.getElementById('icon-sound-off').style.display = sfx.muted ? 'block' : 'none';
+    }
+
+    document.getElementById('btn-sound').addEventListener('click', () => {
+      sfx.toggleMute();
+      syncSoundIcon();
+      if (!sfx.muted) sfx.play('click');
+    });
+
+    document.getElementById('btn-help').addEventListener('click', () => {
+      sfx.play('click');
+      showIntroModal();
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      sfx.play('click');
+      openModal(`
+        <div class="modal-kicker">Подтверждение сброса</div>
+        <h2 class="modal-title">Начать новую 30-дневную сессию?</h2>
+        <div class="modal-body">Текущий прогресс будет сброшен, а в новой игре будут выпадать ещё не сыгранные карточки из базы (250 уникальных задач).</div>
+        <div class="choice-stack">
+          <button class="btn-end-day" onclick="resetSimulation()">
+            <span>Да, начать с Дня 1</span>
+            <span>СБРОС</span>
+          </button>
+          <button class="choice-btn" onclick="closeModal()" style="text-align:center">
+            <span class="choice-btn-title">Отмена — продолжить текущую игру</span>
+          </button>
+        </div>
+      `);
+    });
+
+    attachChartScrubbing(
+      'chart-cash-wrap',
+      'tooltip-cash',
+      'cash-crosshair',
+      h => `День ${h.day}: <strong style="color:var(--emerald-bright)">$${h.cash.toFixed(2)}</strong> (план $${((h.day / 30) * 100).toFixed(1)})`
+    );
+
+    attachChartScrubbing(
+      'chart-tkn-wrap',
+      'tooltip-tkn',
+      'tkn-crosshair',
+      h => `День ${h.day}: Токены <strong style="color:var(--amber-bright)">${h.tknPct}%</strong> | Риск <strong style="color:var(--crimson-bright)">${h.hal}%</strong>`
+    );
+
+    // Boot
+    syncSoundIcon();
+    renderAll();
+    if (!state.introShown) {
+      showIntroModal();
+    }
+  </script>
+</body>
+</html>
